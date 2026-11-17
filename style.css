@@ -287,6 +287,10 @@ body.immersive .wxbar .seg{box-shadow:none}
 body.immersive .wxbar.closed{display:none}
 body.immersive .wxbar:not(.closed){max-height:calc(100dvh - 300px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;flex-wrap:nowrap}
 body.immersive .wxbar:not(.closed)>*{flex:none}
+/* 右上角選單收合:收起來只剩一顆「☰ 選單」 */
+body.immersive.tools-closed .toolbar>*:not(#menuToggle){display:none!important}
+body.immersive .menubtn{font-weight:600}
+body.immersive.tools-closed .menubtn{background:var(--accent);color:#fff}
 body:not(.immersive) #islbar,body:not(.immersive) #skillbar,body:not(.immersive) #facebar,body:not(.immersive) #offbar{display:none}
 body.immersive #viewIsland .dbar{position:fixed;z-index:5;left:max(12px,env(safe-area-inset-left,0px));top:calc(max(12px,env(safe-area-inset-top,0px)) + 52px);max-width:min(560px,calc(100vw - 24px));margin:0;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(20,40,60,.18)}
 body.immersive .hint{bottom:max(14px,env(safe-area-inset-bottom,0px))}

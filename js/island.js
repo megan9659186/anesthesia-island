@@ -44,6 +44,11 @@ renderList();
 function setView(v){ document.body.classList.toggle("immersive",v==="3d"); $("v3d").setAttribute("aria-pressed",v==="3d"); $("vList").setAttribute("aria-pressed",v==="list"); $("viewIsland").hidden=v!=="3d"; $("viewList").hidden=v!=="list"; if(v==="3d") window.dispatchEvent(new Event("resize")); }
 $("v3d").onclick=()=>setView("3d"); $("vList").onclick=()=>setView("list");
 document.body.classList.add("immersive");
+/* 右上角選單收合(手機預設收起;記住使用者的選擇) */
+{ const btn=$("menuToggle"); const set=(open,save)=>{ document.body.classList.toggle("tools-closed",!open); btn.setAttribute("aria-expanded",open); btn.setAttribute("aria-label",open?"收合選單":"展開選單"); btn.textContent=open?"✕ 收合":"☰ 選單";
+    if(!open) document.querySelectorAll(".toolbar .wxbar").forEach(b=>b.classList.add("closed")); if(save) try{ localStorage.setItem("island-menu",open?"open":"closed"); }catch(e){} };
+  let saved=null; try{ saved=localStorage.getItem("island-menu"); }catch(e){}
+  set(saved?saved==="open":window.innerWidth>700,false); btn.onclick=()=>set(document.body.classList.contains("tools-closed"),true); window.__menuOpen=()=>set(true,false); }
 $("wxToggle").onclick=()=>{ const c=$("wxbar").classList.toggle("closed"); $("wxToggle").setAttribute("aria-expanded",!c); };
 /* ---------- 金幣與小麻技能 ---------- */
 const SKILLS=[
@@ -1744,6 +1749,7 @@ async function buildWorld(){
     return api;
   }
   const LIFE=buildLife();
+  const STAR_GLOW=tex(64,64,(c,w,h)=>{ const g2=c.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); g2.addColorStop(0,"rgba(255,255,255,1)"); g2.addColorStop(.3,"rgba(255,255,255,.55)"); g2.addColorStop(1,"rgba(255,255,255,0)"); c.fillStyle=g2; c.fillRect(0,0,w,h); });
   const BEACH=(()=>{ const DEC=[], anim=[], castles=[], rings=[], boards=[], vb={net:null}, boats=[], hearts=[]; let seed=4242; const rnd=()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; };
     const free=(I,x,z,gap,dg=2.2)=>BRIDGES.every(br=>segDist(x,z,br)>5.6)&&Object.values(D3).every(d=>Math.hypot(d.c.x-x,d.c.z-z)>PR+dg)&&trees.every(t=>!t.visible||Math.hypot(t.position.x-x,t.position.z-z)>2.8)&&!(I.room&&I.room.near(x,z))&&DEC.every(q=>Math.hypot(q.x-x,q.z-z)>gap)
       &&LOUNGERS.every(l=>Math.hypot(l.position.x-x,l.position.z-z)>3.5)&&Math.hypot(x-HUT.pos.x,z-HUT.pos.z)>9;
@@ -1838,10 +1844,51 @@ async function buildWorld(){
           net.position.y=2.15; g.add(net);
           const ball=new THREE.Mesh(new THREE.SphereGeometry(.28,18,12),M(0xFFF3C4,{roughness:.5})); ball.position.set(1.1,.28,1.4); g.add(ball); put(g,sp); g.userData.act="vball"; g.userData.ball=ball; g.userData.ballHome=ball.position.clone(); vb.net=g; } }
       for(let i=0;i<2;i++){ const sp=spot(I,10.4,13,3); if(!sp) continue; const g=new THREE.Group(); const tw=towel(["#4FB3E0","#FF8A5B"][i],"#FFFFFF"); tw.position.y=.02; g.add(tw); put(g,sp); } }
+    // 每座島都加:花圃、長椅、路燈(晚上會亮)、青苔石、野餐墊,還有白天的蝴蝶、晚上的螢火蟲
+    { const flowerCols=[0xFF6F91,0xFFD23F,0xFFFFFF,0xB28DFF,0xFF9F43,0x7EC4F2], stemM=M(0x4E9A64), woodM=M(0xB07A4A,{roughness:.8}), ironM=M(0x3A4048,{roughness:.5});
+      const bulbM=()=>new THREE.MeshStandardMaterial({color:0xFFF4D0,emissive:0xFFC864,emissiveIntensity:0,roughness:.3});
+      const range=I=>{ const r0=I.ring?I.ring+1:PR+2.5; return [r0,Math.max(r0+1,I.R-2.2)]; };
+      const okI=I=>I.i===0?((x,z)=>{ const r=Math.hypot(x,z); return r>9.5&&r<26.5&&!(z>-4&&Math.abs(x)<z*1.4+10); }):null;
+      const bed=(k)=>{ const g=new THREE.Group(); const soil=new THREE.Mesh(new THREE.CylinderGeometry(.95,1.05,.16,16),M(0x8A6A4A,{roughness:1})); soil.position.y=.08; g.add(soil);
+        const ring=new THREE.Mesh(new THREE.TorusGeometry(1.0,.1,6,20),M(0xE8DCC8)); ring.rotation.x=Math.PI/2; ring.position.y=.14; g.add(ring);
+        for(let i=0;i<11;i++){ const a=i*2.4+k, r=i?.25+(i%3)*.22:0, h=.35+(i%4)*.08; const st=new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,h,4),stemM); st.position.set(Math.cos(a)*r,.15+h/2,Math.sin(a)*r); g.add(st);
+          const fl=new THREE.Mesh(new THREE.IcosahedronGeometry(.12,0),M(flowerCols[(i+k)%flowerCols.length],{flatShading:true})); fl.position.set(Math.cos(a)*r,.18+h,Math.sin(a)*r); fl.scale.y=.7; g.add(fl); } return g; };
+      const bench=()=>{ const g=new THREE.Group(); for(let i=0;i<3;i++){ const sl=new THREE.Mesh(new THREE.BoxGeometry(1.9,.07,.17),woodM); sl.position.set(0,.6,-.22+i*.2); g.add(sl); }
+        for(let i=0;i<2;i++){ const bk=new THREE.Mesh(new THREE.BoxGeometry(1.9,.15,.06),woodM); bk.position.set(0,.85+i*.22,-.36); bk.rotation.x=-.15; g.add(bk); }
+        for(const x of [-.82,.82]){ const leg=new THREE.Mesh(new THREE.BoxGeometry(.08,.6,.55),ironM); leg.position.set(x,.3,-.05); g.add(leg); const bl=new THREE.Mesh(new THREE.BoxGeometry(.08,.6,.06),ironM); bl.position.set(x,.95,-.38); g.add(bl); } return g; };
+      const lamp=()=>{ const g=new THREE.Group(); const p=new THREE.Mesh(new THREE.CylinderGeometry(.05,.08,2.3,8),ironM); p.position.y=1.15; g.add(p);
+        const base=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,.16,8),ironM); base.position.y=.08; g.add(base);
+        const b=new THREE.Mesh(new THREE.SphereGeometry(.2,12,10),bulbM()); b.position.y=2.42; g.add(b); const cap=new THREE.Mesh(new THREE.ConeGeometry(.24,.18,8),ironM); cap.position.y=2.66; g.add(cap);
+        const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:STAR_GLOW,color:0xFFD27A,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0})); halo.scale.set(1.8,1.8,1); halo.position.y=2.42; g.add(halo);
+        anim.push({lampB:b,halo}); return g; };
+      const rocks=()=>{ const g=new THREE.Group(); for(let k=0;k<3;k++){ const r=new THREE.Mesh(new THREE.DodecahedronGeometry(.32+k*.12,0),M([0xA8A29A,0x9AA0A5,0xB5ADA2][k],{flatShading:true,roughness:.9})); r.position.set(k*.42-.4,.18+k*.05,(k%2)*.3); r.rotation.set(k,k*2,0); g.add(r);
+          const moss=new THREE.Mesh(new THREE.SphereGeometry(.2+k*.05,8,6,0,Math.PI*2,0,Math.PI/2),M(0x6FA552,{roughness:1})); moss.position.set(r.position.x,r.position.y+.2+k*.07,r.position.z); moss.scale.y=.4; g.add(moss); } return g; };
+      const picnic=(k)=>{ const g=new THREE.Group(); const cl=new THREE.Mesh(new THREE.BoxGeometry(1.8,.03,1.8),new THREE.MeshStandardMaterial({roughness:.9,map:tex(64,64,(c,w,h)=>{ c.fillStyle="#fff"; c.fillRect(0,0,w,h); c.fillStyle=["rgba(226,70,63,.75)","rgba(79,163,224,.75)"][k%2]; for(let i=0;i<8;i+=2){ c.fillRect(i*8,0,8,h); c.fillRect(0,i*8,w,8); } })})); cl.position.y=.02; g.add(cl);
+        const bk=new THREE.Mesh(new THREE.CylinderGeometry(.3,.25,.35,10),M(0xC9954F,{roughness:.9})); bk.position.set(.45,.2,.4); g.add(bk); const hd=new THREE.Mesh(new THREE.TorusGeometry(.22,.03,6,12,Math.PI),M(0xA77B3E)); hd.position.set(.45,.38,.4); g.add(hd);
+        const wm=new THREE.Mesh(new THREE.SphereGeometry(.4,16,10,0,Math.PI*2,0,Math.PI/2),M(0x3E8E41)); wm.rotation.x=Math.PI; wm.position.set(-.45,.4,-.3); g.add(wm);
+        const fl=new THREE.Mesh(new THREE.CircleGeometry(.39,16),M(0xF2545B)); fl.rotation.x=-Math.PI/2; fl.position.set(-.45,.41,-.3); g.add(fl);
+        for(let i=0;i<2;i++){ const cup=new THREE.Mesh(new THREE.CylinderGeometry(.08,.06,.18,10),M([0xFFD23F,0x7EC4F2][i])); cup.position.set(-.1+i*.25,.12,.55); g.add(cup); } return g; };
+      ISL.forEach(I=>{ const [r0,r1]=range(I), ok=okI(I);
+        for(let i=0;i<4;i++){ const sp=spot(I,r0,r1,3,2.2,ok); if(sp) put(bed(i+I.i),sp,.9+rnd()*.3); }
+        for(let i=0;i<3;i++){ const sp=spot(I,r0,r1,4,2.4,ok); if(sp) put(lamp(),sp); }
+        for(let i=0;i<2;i++){ const sp=spot(I,r0,r1,3,2.2,ok); if(sp) put(rocks(),sp,1+rnd()*.4); }
+        { const sp=spot(I,r0,r1,4,2.6,ok); if(sp) put(bench(),sp); }
+        if(I.i!==3){ const sp=spot(I,r0,r1,4.5,2.8,ok); if(sp) put(picnic(I.i),sp); } });
+      // 蝴蝶(白天)與螢火蟲(晚上):繞著各島飛
+      const wingG=new THREE.PlaneGeometry(.22,.16); wingG.translate(.11,0,0);
+      ISL.forEach(I=>{ const [r0,r1]=range(I); for(let i=0;i<4;i++){ const g=new THREE.Group(); const col=[0xFFB5D8,0xFFE27A,0x9FD8FF,0xD7B8FF][(i+I.i)%4];
+          const wm=new THREE.MeshStandardMaterial({color:col,side:THREE.DoubleSide,roughness:.6}); const L=new THREE.Mesh(wingG,wm), R=new THREE.Mesh(wingG,wm); R.rotation.y=Math.PI; g.add(L); g.add(R);
+          const bd=new THREE.Mesh(new THREE.CapsuleGeometry(.02,.12,4,6),M(0x333333)); bd.rotation.x=Math.PI/2; g.add(bd); scene.add(g);
+          anim.push({fly:g,L,R,c:I.c,r:r0+rnd()*(r1-r0),a:rnd()*6,sp:(.15+rnd()*.2)*(i%2?1:-1),ph:rnd()*6}); }
+        for(let i=0;i<6;i++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:STAR_GLOW,color:0xD8FF7A,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0})); sp.scale.set(.45,.45,1); scene.add(sp);
+          anim.push({ffly:sp,c:I.c,r:r0+rnd()*(r1-r0),a:rnd()*6,sp:.08+rnd()*.1,ph:rnd()*6}); } }); }
     return {castles, rings, boards, vb, boats, hearts, update(dt,tt){ const night=ENV.night();
       anim.forEach(o=>{ if(o.torch){ const f=1+Math.sin(tt*14+o.ph)*.12+Math.sin(tt*23+o.ph)*.08; o.fl.scale.set(f,f*(1.1+night*.3),f); o.li.intensity=night*3*f; }
         if(o.flag) o.flag.rotation.y=Math.sin(tt*5+o.ph)*.4;
         if(o.beamPivot){ o.beamPivot.rotation.y=tt*.8; o.beam.material.opacity=night*.22; o.lamp.intensity=night*6; o.glass.material.emissiveIntensity=.4+night*1.6; }
+        if(o.lampB){ o.lampB.material.emissiveIntensity=night*2.2; o.halo.material.opacity=night*.8; }
+        if(o.fly){ o.fly.visible=night<.5; if(o.fly.visible){ o.a+=o.sp*dt; const x=o.c.x+Math.cos(o.a)*o.r+Math.sin(tt*.7+o.ph)*1.2, z=o.c.z+Math.sin(o.a)*o.r+Math.cos(tt*.6+o.ph)*1.2; o.fly.position.set(x,TOP+1.1+Math.sin(tt*2.3+o.ph)*.35,z); o.fly.rotation.y=-o.a+(o.sp>0?0:Math.PI); const f=Math.sin(tt*18+o.ph)*1.1; o.L.rotation.y=f; o.R.rotation.y=Math.PI-f; } }
+        if(o.ffly){ o.a+=o.sp*dt; o.ffly.position.set(o.c.x+Math.cos(o.a)*o.r+Math.sin(tt*.5+o.ph),TOP+.8+Math.sin(tt*1.3+o.ph)*.5,o.c.z+Math.sin(o.a)*o.r+Math.cos(tt*.4+o.ph)); o.ffly.material.opacity=night*(.4+.6*Math.max(0,Math.sin(tt*2.2+o.ph))); o.ffly.visible=night>.05; }
         if(o.buoy){ const y=waveH(o.x,o.z,tt,ENV.wave())-.7; o.buoy.position.y=y-.2; o.buoy.rotation.set(Math.sin(tt*1.3+o.ph)*.15,0,Math.cos(tt*1.1+o.ph)*.15); o.li.material.color.setHex(Math.sin(tt*3+o.ph)>.6?0xFFE0A0:0xFF5A3C); } }); } }; })();
 
   /* ================= 海邊背景音效(Web Audio 即時合成,不需下載音檔;預設關閉,可隨時切換) ================= */
