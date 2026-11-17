@@ -38,3 +38,4 @@ js/island.js        主程式：3D 島嶼、小人、書本、題目、音效、
 - 一律用一般的 `<script src>` 載入，不用 fetch 或 `type="module"` 的外部檔，這樣直接雙擊 `index.html` 也能開。
 - 改完要開預覽確認：3D 島能載入、console 沒有錯誤、改到的書能正常打開。
 - 學習進度存在瀏覽器的 localStorage：`island-coins`（答對題目，每題 10 金幣）、`island-bonus`（埋藏金幣每枚 0.1、撿垃圾每次 0.5）、`island-bag`（收藏）。測試時不要清掉使用者的這些紀錄。
+- 網站放在 GitHub：儲存庫 megan9659186/anesthesia-island（main 分支根目錄），網址 https://megan9659186.github.io/anesthesia-island/ 。根目錄一定要有 `.nojekyll`，否則 `data/_index.js` 不會被發布、整座島載不出來。本機資料夾不是 git 儲存庫，目前是用 GitHub 網頁上傳檔案。
