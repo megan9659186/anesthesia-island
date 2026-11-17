@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>麻醉誘島</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Anesthesia Island · 麻醉科專科護理師甄審</div>
+      <h1>麻醉誘島</h1>
+      <p class="lede">以吊橋相連的島嶼、二十八個街區:① 評估給藥島(術前評估、藥理、監測、麻醉機、擺位)、② 器官系統島(全身麻醉對各器官系統的影響:呼吸、心血管、神經、肝膽腸胃、腎臟)、③ 術後疼痛照護島、④ 模擬開刀房島、⑤ 專科照護島(產科、小兒與老年、內分泌與代謝)、⑥ 重症安全島(體液與輸血、重症與恢復室、麻醉安全)、⑦ 專科手術島(各專科手術的麻醉,依科別分書櫃:心臟血管外科、胸腔外科、神經外科、骨科、整形外科、一般外科與移植、泌尿科、眼科、耳鼻喉科、外傷急診、門診與手術室外)。同一主題的 Miller、Morgan 等不同來源內容整合成同一本書。在書裡練習考古題與 AI 猜題,答對累積金幣,可解鎖小麻的新技能。點一個街區,麻醉護理師小麻會走過去,書櫃會從地面慢慢升起;街區裡每個常考主題都是一本書,打開書就能讀依 Miller 整理的重點,書頁最上方是該主題的 109–115 年歷屆考古題與 AI 猜題。</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="ttl"><b>麻醉誘島</b><span>麻醉科專科護理師甄審</span><button type="button" id="aboutBtn" aria-label="說明" title="說明">ⓘ</button></div>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="檢視方式">
+      <button id="v3d" type="button" aria-pressed="true">3D 島嶼</button>
+      <button id="vList" type="button" aria-pressed="false">書目清單</button>
+    </div>
+    <button class="wxtoggle" id="sndToggle" type="button" aria-pressed="false" title="海邊背景音效">🔇 音效關</button>
+    <button class="wxtoggle" id="wxToggle" type="button" aria-expanded="false">⛅ 天氣與時間</button>
+    <div class="wxbar closed" id="wxbar">
+      <span class="lbl">時間</span>
+      <div class="seg" id="tod" role="group" aria-label="白天或黑夜"><button type="button" data-t="day" aria-pressed="true">☀️ 白天</button><button type="button" data-t="night" aria-pressed="false">🌙 黑夜</button></div>
+      <span class="lbl">天氣</span>
+      <div class="seg wx" id="wx" role="group" aria-label="天氣"><button type="button" data-w="clear" aria-pressed="true">晴天</button><button type="button" data-w="overcast" aria-pressed="false">陰天</button><button type="button" data-w="drizzle" aria-pressed="false">毛毛雨</button><button type="button" data-w="downpour" aria-pressed="false">傾盆大雨</button><button type="button" data-w="typhoon" aria-pressed="false">颱風天</button><button type="button" data-w="rainbow" aria-pressed="false">彩虹</button></div>
+    </div>
+    <button class="wxtoggle" id="islToggle" type="button" aria-expanded="false">🏝️ 換島</button>
+    <div class="wxbar closed islbar" id="islbar" role="group" aria-label="換島"><span class="lbl">要去哪一座島?</span></div>
+    <button class="wxtoggle coinbtn" id="coinToggle" type="button" aria-expanded="false"><i class="gc" aria-hidden="true"></i> 0</button>
+    <div class="wxbar closed skillbar" id="skillbar" role="group" aria-label="金幣與技能"></div>
+    <button class="wxtoggle" id="faceToggle" type="button" aria-expanded="false">😊 表情</button>
+    <div class="wxbar closed facebar" id="facebar" role="group" aria-label="小麻表情">
+      <span class="lbl">換個表情</span>
+      <div class="faces"></div>
+    </div>
+    <button class="wxtoggle" id="offToggle" type="button" aria-expanded="false">🏖️ 下班</button>
+    <div class="wxbar closed offbar" id="offbar" role="group" aria-label="下班活動">
+      <span class="lbl">下班囉!想做什麼?</span>
+      <button type="button" class="offbtn" data-off="free">🏊 換泳裝去游泳</button>
+      <button type="button" class="offbtn" data-off="swim">🐬 換泳裝騎海豚</button>
+      <button type="button" class="offbtn" data-off="hawaii">🌺 夏威夷衫開帆船</button>
+      <button type="button" class="offbtn" data-off="fish">🎣 去海邊釣魚</button>
+      <button type="button" class="offbtn work" data-off="work">👩‍⚕️ 回去上班</button>
+    </div>
+    <span class="tip">拖曳可旋轉視角,滾輪或雙指可縮放</span>
+  </div>
+
+  <div id="viewIsland">
+    <div class="dbar" id="dbar" hidden></div>
+    <div class="stage" id="stage">
+      <div class="loading" id="loading">麻醉誘島載入中⋯</div>
+      <div class="labels" id="labels"><div class="tip3" id="tip3" hidden></div></div>
+      <button class="orstart" id="orStart" type="button">🏥 開始情境模擬</button>
+      <aside class="orpanel" id="orPanel" hidden aria-live="polite"></aside>
+      <aside class="orpanel" id="wishPanel" hidden aria-live="polite"></aside>
+      <div class="hud hint" id="hint">點沙灘小麻會走過去 · 點街區進入科別</div>
+      <button class="hud useexit" id="useExit" type="button" hidden></button>
+      <button class="hud reset" id="reset" type="button" aria-label="重設視角" title="重設視角">⤢</button>
+    </div>
+  </div>
+  <div id="viewList" class="listview" hidden></div>
+
+  <footer>題號格式:115 進階 34 = 115 年進階專科護理第 34 題;115 通論 4 = 115 年專科護理通論第 4 題。原題與答案取自衛生福利部公告試題。學習內容依 Miller's Anesthesia 第 10 版、Morgan & Mikhail's Clinical Anesthesiology 第 7 版等教科書自行整理改寫,非原文,僅供教學複習參考。</footer>
+</div>
+
+<script src="data/_index.js"></script>
+<script src="data/resp.js"></script>
+<script src="data/cv.js"></script>
+<script src="data/neuro.js"></script>
+<script src="data/pain.js"></script>
+<script src="data/pos.js"></script>
+<script src="data/gi.js"></script>
+<script src="data/renal.js"></script>
+<script src="data/pharm.js"></script>
+<script src="data/equip.js"></script>
+<script src="data/preop.js"></script>
+<script src="data/monitor.js"></script>
+<script src="data/ob.js"></script>
+<script src="data/age.js"></script>
+<script src="data/endoc.js"></script>
+<script src="data/cts.js"></script>
+<script src="data/thor.js"></script>
+<script src="data/nsx.js"></script>
+<script src="data/ortho.js"></script>
+<script src="data/plast.js"></script>
+<script src="data/gsx.js"></script>
+<script src="data/uro.js"></script>
+<script src="data/eye.js"></script>
+<script src="data/ent.js"></script>
+<script src="data/trauma.js"></script>
+<script src="data/amb.js"></script>
+<script src="data/fluid.js"></script>
+<script src="data/icu.js"></script>
+<script src="data/safety.js"></script>
+<script src="data/qbank.js"></script>
+<script src="data/scenarios.js"></script>
+<script src="js/assemble.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/overview.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script src="js/island.js"></script>
