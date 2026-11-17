@@ -1,4 +1,4 @@
-// 麻醉誘島主程式：three.js 3D 島嶼、小麻、書本閱讀、題目。
+// 麻醉又倒主程式：three.js 3D 島嶼、小麻、書本閱讀、題目。
 // 以一般 <script> 載入（包在 async 函式裡），雙擊 index.html 直接開也能跑。
 (async () => {
 "use strict";
@@ -287,7 +287,7 @@ $("offbar").addEventListener("click",e=>{ const b=e.target.closest("[data-off]")
   document.querySelectorAll(".offbtn").forEach(x=>x.setAttribute("aria-pressed",x.dataset.off===k&&k!=="work"));
   $("offToggle").textContent=k==="work"?"🏖️ 下班":k==="fish"?"🎣 釣魚中":k==="swim"?"🐬 下班中":k==="free"?"🏊 下班中":"⛵ 下班中"; $("offbar").classList.add("closed"); });
 $("aboutBtn").onclick=()=>{ const m=document.createElement("div"); m.className="about";
-  m.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="說明"><button class="x" type="button" aria-label="關閉">✕</button><h2>麻醉誘島</h2>
+  m.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="說明"><button class="x" type="button" aria-label="關閉">✕</button><h2>麻醉又倒</h2>
     <p>${document.querySelector(".lede").innerHTML}</p><div class="stats" style="margin:10px 0">${$("stats").innerHTML}</div>
     <p class="meta">拖曳可旋轉視角,滾輪或雙指可縮放。</p><p class="meta">${document.querySelector("footer").innerHTML}</p></div>`;
   const close=()=>m.remove(); m.onclick=e=>{ if(e.target===m) close(); }; m.querySelector(".x").onclick=close; document.body.appendChild(m); };
