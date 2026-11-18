@@ -69,7 +69,7 @@ const COLLECT=[
   {c:"沙灘小物",items:[["莓果","🍒",1],["椰子","🥥",1],["舊靴子","🥾",1],["漂流瓶","🍾",2],["珍珠","🦪",3]]},
   {c:"麻醉藥物",med:"drug",items:[["Propofol","🥛",1],["Etomidate","💉",2],["Ketamine","💉",2],["Midazolam","💉",1],["Dexmedetomidine","💉",2],["Remimazolam","💉",3],["Fentanyl","💉",1],["Morphine","💉",1],["Remifentanil","💉",2],["Meperidine","💉",2],["Sevoflurane","🟡",1],["Desflurane","🔵",2],["Isoflurane","🟣",2],["Rocuronium","💉",1],["Cisatracurium","💉",2],["Succinylcholine","💉",2],["Sugammadex","💉",2],["Neostigmine","💉",1],["Glycopyrrolate","💉",2],["Atropine","💉",1],["Lidocaine","💉",1],["Bupivacaine","💉",1],["Ropivacaine","💉",2],["Naloxone","💉",2],["Flumazenil","💉",2],["Dantrolene","🧪",3],["Ondansetron","💉",1],["Dexamethasone","💉",1],["Intralipid 20%","🥛",3]]},
   {c:"升壓與降壓藥",med:"vaso",items:[["Ephedrine","💉",1],["Phenylephrine","💉",1],["Epinephrine","💉",1],["Norepinephrine","💉",2],["Vasopressin","💉",2],["Dopamine","💉",2],["Dobutamine","💉",2],["Milrinone","💉",3],["Nitroglycerin","💉",2],["Labetalol","💉",1],["Esmolol","💉",2],["Nicardipine","💉",2],["Hydralazine","💉",2],["Nitroprusside","💉",3]]},
-  {c:"呼吸道與管路",med:"line",items:[["Endo 3.0","🫁",2],["Endo 3.5","🫁",2],["Endo 4.0","🫁",2],["Endo 4.5","🫁",2],["Endo 5.0","🫁",2],["Endo 5.5","🫁",2],["Endo 6.0","🫁",1],["Endo 6.5","🫁",1],["Endo 7.0","🫁",1],["Endo 7.5","🫁",1],["Endo 8.0","🫁",1],["雙腔管 DLT","🫁",3],["LMA","🫁",1],["Flowtrach","🫁",2],["Trachway","📹",2],["喉頭鏡","🔦",1],["影像喉頭鏡","📹",2],["Bougie","🪄",2],["A-line","🩸",1],["CVC","🩺",2],["PICC","🩺",2],["IV 18G","💧",1],["IV 20G","💧",1],["IV 22G","💧",1],["Foley","💧",1]]},
+  {c:"呼吸道與管路",med:"line",items:[["Endo 3.0","🫁",2],["Endo 3.5","🫁",2],["Endo 4.0","🫁",2],["Endo 4.5","🫁",2],["Endo 5.0","🫁",2],["Endo 5.5","🫁",2],["Endo 6.0","🫁",1],["Endo 6.5","🫁",1],["Endo 7.0","🫁",1],["Endo 7.5","🫁",1],["Endo 8.0","🫁",1],["雙腔管 DLT","🫁",3],["LMA","🫁",1],["FloTrac","📈",2],["Trachway","📹",2],["喉頭鏡","🔦",1],["影像喉頭鏡","📹",2],["Bougie","🪄",2],["A-line","🩸",1],["CVC","🩺",2],["PICC","🩺",2],["IV 18G","💧",1],["IV 20G","💧",1],["IV 22G","💧",1],["Foley","💧",1]]},
   {c:"血品",med:"blood",items:[["PRBC","🩸",1],["FFP","🟨",1],["Platelet","🟡",2],["Cryoprecipitate","🧊",3],["Albumin","🥛",2]]},
   {c:"手術室夥伴與設備",med:"card",items:[["麻醉主治醫師","👨‍⚕️",3],["麻醉巡迴員","👩‍⚕️",3],["CRNA 學姊","👩‍⚕️",2],["外科醫師","🧑‍⚕️",2],["刷手護理師","🧑‍⚕️",2],["升降椅","🪑",2],["點滴架","🩺",1],["電擊器","⚡",3]]}];
 const COL_BY={}; COLLECT.forEach(g=>g.items.forEach(([n,ic,r])=>COL_BY[n]={n,ic,r,c:g.c,med:g.med}));
@@ -1683,17 +1683,25 @@ async function buildWorld(){
         const outer=new THREE.Mesh(new THREE.BoxGeometry(.4,.04,.9),gg); outer.position.set(-.08,0,sz*1.5); outer.rotation.y=sz*.25; w.add(outer); b.add(w); wings.push({w,sz}); }
       b.userData={a:rnd()*6, r:18+rnd()*30, h:13+rnd()*10, sp:(.18+rnd()*.12)*(i%2?1:-1), ph:rnd()*6, wings}; b.scale.setScalar(.75); shadowy(b); scene.add(b); gulls.push(b); }
     let gullCD=20;
+    // 海鷗的路線:先在高空(比陽傘、樹叢、燈塔都高)飛到目標正上方,再垂直降落;起飛也是先垂直升高再飛走,不會穿過任何東西
+    const GULL_CRUISE=TOP+12.5;
+    const columnClear=(x,z)=>OBS.every(o=>Math.hypot(o.c.x-x,o.c.z-z)>o.r+.7)&&trees.every(t=>!t.visible||Math.hypot(t.position.x-x,t.position.z-z)>1.9)&&!(ISL[3].room&&ISL[3].room.near(x,z))&&(typeof HUT==="undefined"||Math.hypot(x-HUT.pos.x,z-HUT.pos.z)>6);
     function gullJob(b,u,dt,tt,orbit){ const J=u.job; J.t+=dt; const flap=(sp,amp)=>u.wings.forEach(w=>w.w.rotation.x=w.sz*Math.sin(tt*sp+u.ph)*amp);
       const headTop=()=>{ nurse.updateMatrixWorld(true); const p=nurse.userData.head.getWorldPosition(new THREE.Vector3()); p.y+=.8*nurse.scale.y; return p; };
       const P=J.k==="eat"?J.lit.position.clone().add(new THREE.Vector3(0,.25,0)):headTop();
-      const fly=(from,to,k)=>{ const e=k*k*(3-2*k); const p=from.clone().lerp(to,e); p.y+=Math.sin(k*Math.PI)*2.5; const d=to.clone().sub(from); b.position.copy(p); b.rotation.set(0,Math.atan2(-d.z,d.x),-(to.y-from.y)/(d.length()+.1)*.6*(1-k),"YXZ"); };
-      if(J.phase==="go"){ const k=Math.min(1,J.t/J.dur); fly(J.from,P,k); flap(9,.6); if(k>=1){ J.phase="act"; J.t=0; } return; }
-      if(J.phase==="act"){ b.position.copy(P); b.rotation.z=-.55*Math.max(0,Math.sin(J.t*13)); flap(3,.12);
+      const face=(dx,dz)=>{ if(Math.hypot(dx,dz)>.01) b.rotation.set(0,Math.atan2(-dz,dx),0,"YXZ"); };
+      const done=()=>{ J.phase="up"; J.t=0; J.from=b.position.clone(); };
+      if(J.phase==="go"){ const above=new THREE.Vector3(P.x,GULL_CRUISE,P.z); const k=Math.min(1,J.t/J.dur), e=k*k*(3-2*k); const d=above.clone().sub(J.from);
+        b.position.copy(J.from).addScaledVector(d,e); face(d.x,d.z); flap(9,.6); if(k>=1){ J.phase="down"; J.t=0; } return; }
+      if(J.phase==="down"){ if(J.k==="peck"&&!columnClear(P.x,P.z)){ done(); return; } const k=Math.min(1,J.t/1.6), e=k*k*(3-2*k); b.position.set(P.x,GULL_CRUISE+(P.y-GULL_CRUISE)*e,P.z); b.rotation.z=0; flap(5,.7); if(k>=1){ J.phase="act"; J.t=0; J.at=P.clone(); } return; }
+      if(J.phase==="act"){ if(J.k==="peck"&&Math.hypot(P.x-J.at.x,P.z-J.at.z)>.9){ done(); return; }   // 小麻走開了就飛走
+        b.position.copy(P); b.rotation.z=-.55*Math.max(0,Math.sin(J.t*13)); flap(3,.12);
         if(!J.done&&J.t>.35){ J.done=true;
-          if(J.k==="eat"){ if(!eatLitter(J.lit,"gull")){ J.phase="back"; J.t=0; J.from=b.position.clone(); return; } }
+          if(J.k==="eat"){ if(!eatLitter(J.lit,"gull")){ done(); return; } }
           else { toast("🐦 海鷗停在小麻頭上啄啄啄⋯⋯好痛!"); react("wrong"); sprayFx(P.clone(),[0xFFFFFF,0xE8EDF2],6,.06,1.4); } }
-        if(J.t>(J.k==="eat"?1.4:1.9)){ J.phase="back"; J.t=0; J.from=b.position.clone(); } return; }
-      const k=Math.min(1,J.t/2.6); fly(J.from,orbit,k); flap(8,.55); if(k>=1) u.job=null; }
+        if(J.t>(J.k==="eat"?1.4:1.9)) done(); return; }
+      if(J.phase==="up"){ const k=Math.min(1,J.t/1.4), e=k*k*(3-2*k); b.position.set(J.from.x,J.from.y+(GULL_CRUISE-J.from.y)*e,J.from.z); b.rotation.z=.3*(1-k); flap(10,.7); if(k>=1){ J.phase="back"; J.t=0; J.from=b.position.clone(); } return; }
+      const k=Math.min(1,J.t/2.6), e=k*k*(3-2*k); const d=orbit.clone().sub(J.from); b.position.copy(J.from).addScaledVector(d,e); face(d.x,d.z); flap(8,.55); if(k>=1) u.job=null; }
     /* sea creatures that leap out of the water — lathe bodies with counter-shading, shaped fins */
     const lathe=(prof,seg=28)=>{ const cr=new THREE.SplineCurve(prof.map(([x,r])=>new THREE.Vector2(x,r))); const pts=cr.getPoints(60).map(v=>new THREE.Vector2(Math.max(v.y,.0001),v.x)); const g=new THREE.LatheGeometry(pts,seg); g.rotateZ(-Math.PI/2); return g; };
     const paint=(geo,fn)=>{ const p=geo.attributes.position, c=[]; const col=new THREE.Color(); for(let i=0;i<p.count;i++){ fn(p.getX(i),p.getY(i),p.getZ(i),col); c.push(col.r,col.g,col.b); } geo.setAttribute("color",new THREE.Float32BufferAttribute(c,3)); return geo; };
@@ -1794,10 +1802,10 @@ async function buildWorld(){
       const gullOK=night<.5&&!stormy;
       // 海鷗的小任務:飛下來吃地上的垃圾(扣 0.2),或是停在小麻頭上啄一啄
       gullCD-=dt; if(gullOK&&gullCD<=0&&!gulls.some(b=>b.userData.job)){ gullCD=18+Math.random()*24;
-        const lit=FALLEN.find(f=>litterFree(f)&&(f.userData.age||0)>8);
+        const lit=FALLEN.find(f=>litterFree(f)&&(f.userData.age||0)>8&&columnClear(f.position.x,f.position.z));
         const idle=mode==="idle"&&!walk&&!OFF&&!inHut&&!FISH&&!LOUNGE&&!bookEl&&!(ISL[3].room&&ISL[3].room.near(nurse.position.x,nurse.position.z));
         const b=gulls[Math.floor(Math.random()*gulls.length)], u=b.userData;
-        if(lit) u.job={k:"eat",lit,phase:"go",t:0,from:b.position.clone()}; else if(idle&&Math.random()<.5) u.job={k:"peck",phase:"go",t:0,from:b.position.clone()};
+        if(lit) u.job={k:"eat",lit,phase:"go",t:0,from:b.position.clone()}; else if(idle&&Math.random()<.5&&columnClear(nurse.position.x,nurse.position.z)) u.job={k:"peck",phase:"go",t:0,from:b.position.clone()};
         if(u.job){ const P=u.job.k==="eat"?lit.position:nurse.position; u.job.dur=Math.min(4.5,Math.max(2,b.position.distanceTo(P)/14)); } }
       gulls.forEach(b=>{ const u=b.userData; b.visible=gullOK; if(!gullOK){ u.job=null; return; } u.a+=u.sp*dt; const x=Math.cos(u.a)*u.r, z=Math.sin(u.a)*u.r;
         if(u.job){ gullJob(b,u,dt,tt,new THREE.Vector3(x,u.h+Math.sin(tt*.7+u.ph)*1.2,z)); return; }
