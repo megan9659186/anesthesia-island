@@ -663,21 +663,60 @@ async function buildWorld(){
     const patM=new THREE.MeshStandardMaterial({color:0xF2CDB0,roughness:.6});
     const head=new THREE.Group(); head.position.set(0,2.45,2.05); g.add(head);
     const hd=new THREE.Mesh(new THREE.SphereGeometry(.55,24,18),patM); hd.scale.set(1,.85,1.05); head.add(hd);
-    const hcap=new THREE.Mesh(new THREE.SphereGeometry(.57,24,14,0,Math.PI*2,0,Math.PI*.36),M(0x7FC4E8,{roughness:.8})); hcap.rotation.x=Math.PI/2+.5; hcap.position.z=.1; hcap.scale.set(1,1,.9); head.add(hcap);
-    for(const sx of [-.2,.2]){ const e=new THREE.Mesh(new THREE.BoxGeometry(.17,.03,.03),M(0x3A2A2A)); e.position.set(sx,.42,-.18); e.rotation.x=-.2; head.add(e); }
-    const tape=new THREE.Mesh(new THREE.BoxGeometry(.7,.04,.12),M(0xF5F5F5)); tape.position.set(0,.47,-.42); head.add(tape);
-    const ett=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.9,10),new THREE.MeshPhysicalMaterial({color:0xF2F7FA,transparent:true,opacity:.85,roughness:.2})); ett.rotation.x=-1.1; ett.position.set(0,.6,-.75); head.add(ett);
+    // 依真實手術中的樣子:綠色不織布手術帽 + 蓋在頭頂的淺綠毛巾、閉眼貼透明護眼膜、額頭 BIS 貼片、經口氣管內管用白膠布固定、鼻胃管與藍色體溫探頭
+    const hcap=new THREE.Mesh(new THREE.SphereGeometry(.585,24,14,0,Math.PI*2,0,Math.PI*.4),M(0x2FA58A,{roughness:.95})); hcap.rotation.x=Math.PI/2+.45; hcap.position.z=.1; hcap.scale.set(1.02,1,.92); head.add(hcap);
+    const towel=new THREE.Mesh(new THREE.SphereGeometry(.6,24,12,0,Math.PI*2,0,Math.PI*.3),M(0xBFE6CF,{roughness:1})); towel.rotation.x=Math.PI/2+.75; towel.position.set(0,.02,.1); towel.scale.set(1.04,1,.95); head.add(towel);
+    for(const sx of [-.2,.2]){ const e=new THREE.Mesh(new THREE.BoxGeometry(.17,.03,.03),M(0x3A2A2A)); e.position.set(sx,.44,-.16); e.rotation.x=-.2; head.add(e);
+      const film=new THREE.Mesh(new THREE.BoxGeometry(.3,.012,.2),new THREE.MeshPhysicalMaterial({color:0xFFFFFF,transparent:true,opacity:.45,roughness:.15,clearcoat:1})); film.position.set(sx,.46,-.16); film.rotation.x=-.25; head.add(film); }
+    const nose=new THREE.Mesh(new THREE.SphereGeometry(.09,12,10),patM); nose.scale.set(.8,1,1.3); nose.position.set(0,.5,-.3); head.add(nose);
+    // 額頭的 BIS 貼片(白色、印著 1 2 3 4 的電極)
+    { const bt=tex(256,72,(c,w,h)=>{ c.clearRect(0,0,w,h); c.fillStyle="#FFFFFF"; c.beginPath(); c.roundRect(4,10,w-8,h-20,24); c.fill(); [[40,"2"],[110,"1"],[180,"4"],[226,"3"]].forEach(([x,n])=>{ c.fillStyle="#1F2A44"; c.beginPath(); c.arc(x,h/2,15,0,Math.PI*2); c.fill(); c.fillStyle="#fff"; c.font="bold 18px sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText(n,x,h/2+1); }); });
+      const bis=new THREE.Mesh(new THREE.PlaneGeometry(.78,.22),new THREE.MeshStandardMaterial({map:bt,transparent:true,roughness:.7})); bis.rotation.x=-Math.PI/2+.05; bis.position.set(0,.475,.04); head.add(bis); }
+    // 嘴角固定氣管內管的白色膠布
+    for(const sx of [-1,1]){ const t2=new THREE.Mesh(new THREE.BoxGeometry(.42,.02,.1),M(0xF7F7F2,{roughness:.95})); t2.position.set(sx*.2,.43,-.4); t2.rotation.set(-.35,0,-sx*.15); head.add(t2); }
+    const noseTape=new THREE.Mesh(new THREE.BoxGeometry(.12,.02,.3),M(0xF7F7F2,{roughness:.95})); noseTape.position.set(0,.585,-.24); noseTape.rotation.x=-.5; head.add(noseTape);
     const pillow=new THREE.Mesh(new RoundedBoxGeometry(1.4,.25,1.0,2,.12),M(0xFFFFFF)); pillow.position.set(0,2.0,2.1); g.add(pillow);
     const neck=new THREE.Mesh(new THREE.CylinderGeometry(.28,.3,.5,12),patM); neck.rotation.x=Math.PI/2; neck.position.set(0,2.2,1.55); g.add(neck);
-    const drapeM=M(0x3E8E9E,{roughness:.85});
+    const drapeM=M(0x9AA6E4,{roughness:.9});   // 淡藍紫色手術鋪單(照真實樣子)
     const drape=new THREE.Mesh(new RoundedBoxGeometry(2.6,.45,4.6,3,.18),drapeM); drape.position.set(0,2.15,-1.85); g.add(drape);
     const chest=new THREE.Mesh(new RoundedBoxGeometry(2.2,.55,1.5,3,.25),drapeM); chest.position.set(0,2.2,.65); g.add(chest);
     const field=new THREE.Mesh(new THREE.PlaneGeometry(1.0,1.3),new THREE.MeshStandardMaterial({color:0xC9873A,roughness:.6})); field.rotation.x=-Math.PI/2; field.position.set(0,2.39,-1.2); g.add(field);
-    const ether=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.6,.08),M(0x5AA5B5,{roughness:.9})); ether.position.set(0,2.75,1.35); g.add(ether);
+    const ether=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.6,.08),M(0x8E9BDD,{roughness:.9})); ether.position.set(0,2.75,1.35); g.add(ether);
     for(const sx of [-1,1]){ const arm=new THREE.Mesh(new THREE.CylinderGeometry(.26,.22,1.7,10),patM); arm.rotation.z=Math.PI/2; arm.position.set(sx*1.95,2.15,1.05); g.add(arm);
       const hand=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),patM); hand.position.set(sx*2.85,2.15,1.05); g.add(hand); }
-    // breathing circuit from ETT to the machine
-    { const cv=new THREE.CatmullRomCurve3([[0,3.2,1.4],[-.6,3.3,2.4],[-1.8,3.0,3.2],[-3.1,2.4,3.4]].map(p=>new THREE.Vector3(...p))); g.add(new THREE.Mesh(new THREE.TubeGeometry(cv,30,.09,8,false),M(0x8EC9EE,{roughness:.4}))); }
+    // 呼吸管路(照真實樣子):經口氣管內管 → 透明彎頭 → HMEF 過濾器(白色、藍色環) → 紫色螺紋管路接到麻醉機;過濾器上接 CO₂ 取樣管
+    const gear=new THREE.Group(); g.add(gear);
+    { const clear=new THREE.MeshPhysicalMaterial({color:0xEAF4F8,transparent:true,opacity:.75,roughness:.15,clearcoat:1});
+      const tubeAlong=(pts,r,mat,seg=40)=>{ const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p))),seg,r,10,false),mat); gear.add(m); return m; };
+      // 氣管內管(含藍色刻度線)由嘴巴往上
+      tubeAlong([[0,2.8,1.65],[0,3.15,1.66],[.02,3.5,1.7]],.075,clear,16);
+      tubeAlong([[.06,2.82,1.65],[.06,3.15,1.66],[.08,3.48,1.7]],.012,M(0x2F6FD6),16);
+      // 透明彎頭(catheter mount)
+      tubeAlong([[.02,3.48,1.7],[.0,3.68,1.74],[-.25,3.78,1.82],[-.45,3.78,1.86]],.11,clear,20);
+      // HMEF 過濾器:白色圓盤、藍色環
+      const hm=new THREE.Group(); hm.position.set(-.72,3.78,1.9); hm.rotation.z=Math.PI/2; gear.add(hm);
+      hm.add(new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.26,28),M(0xF4F4F0,{roughness:.6})));
+      const ring=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.07,28),M(0x3C7DD9,{roughness:.4})); hm.add(ring);
+      for(const sy of [-1,1]){ const port=new THREE.Mesh(new THREE.CylinderGeometry(.11,.12,.22,14),clear); port.position.y=sy*.22; hm.add(port); }
+      // 紫色螺紋管路(用條紋貼圖做出螺紋)接到麻醉機,機器端接綠色過濾器
+      const corr=tex(32,256,(c,w,h)=>{ for(let i=0;i<32;i++){ c.fillStyle=i%2?"#C9A6E8":"#B48AD9"; c.fillRect(0,i*h/32,w,h/32+1); } }); corr.wrapS=corr.wrapT=THREE.RepeatWrapping; corr.repeat.set(1,10);
+      tubeAlong([[-.98,3.78,1.94],[-1.4,3.7,2.1],[-2.1,3.35,2.7],[-2.8,2.95,3.25],[-3.25,2.6,3.45]],.14,new THREE.MeshStandardMaterial({map:corr,roughness:.5,transparent:true,opacity:.92}),48);
+      const gf=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.1,20),M(0x2DB89C,{roughness:.4})); gf.position.set(-3.32,2.55,3.5); gf.rotation.set(.5,0,1.1); gear.add(gf);
+      // CO₂ 取樣管(細透明管)從過濾器拉到麻醉機
+      tubeAlong([[-.72,4.1,1.9],[-1.2,4.0,2.2],[-2.2,3.4,2.9],[-3.4,2.9,3.2]],.02,clear,30);
+      // 鼻胃管(透明)從鼻孔出來、貼在鼻樑上,繞到病人右側
+      tubeAlong([[0,3.0,1.75],[0,3.08,1.85],[.15,3.06,2.05],[.6,2.85,2.25],[1.3,2.3,2.4],[1.6,1.6,2.6]],.03,clear,30);
+      // 藍色體溫探頭線
+      tubeAlong([[.05,2.98,1.75],[.3,3.0,1.85],[.7,2.9,2.0],[1.35,2.4,2.15],[1.7,1.7,2.3]],.025,M(0x2E6FE0,{roughness:.5}),30);
+      // BIS 導線
+      tubeAlong([[.4,2.93,2.1],[.8,2.8,2.4],[1.2,2.4,2.8],[1.5,1.8,3.0]],.025,M(0xE8ECF0,{roughness:.6}),20);
+      // FloTrac 動脈壓感測器(白色,掛在病人右側),透明壓力管接到右手的動脈導管
+      const ft=new THREE.Group(); ft.position.set(2.2,2.85,2.75); gear.add(ft);
+      const fb=new THREE.Mesh(new RoundedBoxGeometry(.32,.8,.2,2,.06),M(0xF2F4F5,{roughness:.5})); ft.add(fb);
+      const fl=new THREE.Mesh(new THREE.PlaneGeometry(.12,.55),new THREE.MeshBasicMaterial({map:tex(32,160,(c,w,h)=>{ c.fillStyle="#F2F4F5"; c.fillRect(0,0,w,h); c.save(); c.translate(w/2,h/2); c.rotate(-Math.PI/2); c.fillStyle="#2E8C6E"; c.font="italic bold 20px sans-serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText("FloTrac",0,0); c.restore(); })})); fl.rotation.x=-Math.PI/2; fl.position.set(0,.11,0); fl.rotation.set(-Math.PI/2,0,0); fl.position.set(.0,.105,0); ft.add(fl); fl.rotation.set(-Math.PI/2,0,0);
+      const sc=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.14,10),M(0x2E72E0)); sc.position.set(-.2,.25,0); sc.rotation.z=Math.PI/2; ft.add(sc);
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,2.9,8),M(0xCDD3D8,{metalness:.6,roughness:.3})); pole.position.set(.25,-1.4,0); ft.add(pole);
+      tubeAlong([[2.2,2.45,2.75],[2.5,2.2,2.2],[2.8,2.2,1.4],[2.85,2.25,1.1]],.025,clear,24); }
     // anesthesia machine (a smaller copy of the island's machine)
     const amHolder=new THREE.Group(); amHolder.position.set(-5.4,0,3.0); amHolder.rotation.y=.45; amHolder.scale.setScalar(.9); g.add(amHolder);   // 麻醉機放大
     // patient monitor on a pole, tilted up for the overhead view
@@ -798,7 +837,7 @@ async function buildWorld(){
     const GPATH=[[3.4,4.6],[1.2,6.6],[0,8.4],[0,11.6],[-12.6,11.6],[-16,6.8],[-16,1.4]];
     let ho=null;
     // 推床出發後,手術台上的病人就不再顯示(病人已經在推床上)
-    const patParts=[]; g.traverse(o=>{ if(o.isMesh&&(o.material===patM||o.material===drapeM)) patParts.push(o); }); patParts.push(head,pillow,ether);
+    const patParts=[]; g.traverse(o=>{ if(o.isMesh&&(o.material===patM||o.material===drapeM)) patParts.push(o); }); patParts.push(head,pillow,ether,gear);
     const showPat=(v)=>patParts.forEach(o=>o.visible=v);
     function handoff(cb){ showPat(false); restOn=true; gur.visible=true; gur.position.set(GPATH[0][0],0,GPATH[0][1]); ho={i:1,cb,done:false}; }
     function reset(){ cpr(false); shockT=0; restOn=false; circRest=false; cRet=null; staff.forEach(d=>{ d.p.position.set(d.x,.12,d.z); d.p.rotation.set(0,d.ry,0); d.p.userData.legs.forEach(l=>l.rotation.x=0); d.back=0; }); cw={i:0,wait:1}; showPat(true); helpOn=false; HELP.forEach(h=>h.p.visible=false); gur.visible=false; ho=null; }
@@ -2986,6 +3025,7 @@ async function buildWorld(){
     orHandoff:(cb)=>{ let a=false,b=false; const fin=()=>{ if(a&&b) cb&&cb(); };
       OR.handoff(()=>{ a=true; fin(); }); const dest=OR.toW(-13.4,3.2); faceCamera=false; route(pathTo(dest),()=>{ mode="idle"; faceCamera=true; b=true; fin(); });
       const tgt=OR.toW(-9,2); tgt.y=TOP; const pos=OR.toW(-6,24); pos.y=TOP+26; tweenCam(pos,tgt,1600); }, atOR:()=>viewIsl===3, inOR:()=>ISL[3].room.inside(nurse.position),
+    _orLook:(cx,cy,cz,tx,ty,tz)=>{ const a=OR.toW(cx,cz), b=OR.toW(tx,tz); camTween=null; controls.enabled=false; camera.position.set(a.x,TOP+cy,a.z); controls.target.set(b.x,TOP+ty,b.z); controls.update(); },
     _walkP:()=>walk&&walk.P?walk.P.map(q=>[+q.x.toFixed(2),+q.z.toFixed(2)]):null,
     _exits:()=>ISL.map(I=>{ const O=outer(I); return O?[+O.a.toFixed(2),+O.rW.toFixed(1),O.I.i]:null; }), _br:()=>BRIDGES.map(b=>[b.a.x,b.a.z,b.b.x,b.b.z]), _off:()=>OFF&&{phase:OFF.phase,kind:OFF.kind}, _isl:()=>ISL.map(I=>[I.c.x,I.c.z,I.R]), _goIsl:(i)=>{ const I=ISL[i]; nurse.position.set(I.c.x+(I.ring?I.ring+2:PR+3),TOP,I.c.z); },
     _pet:(i)=>petTurtle(TURTLES.list[i||0].g), _turtles:()=>TURTLES.list, _snk:()=>snorkelFind(), _gull:()=>LIFE.gullNow(), _gulls:()=>LIFE.gulls, _fallen:()=>FALLEN, _bonus:()=>window.__coins(),
