@@ -1509,7 +1509,20 @@ async function buildWorld(){
   const headingY=(a)=>-a-Math.PI/2;           // facing for counter-clockwise travel around the archipelago
   const pol=(a,r)=>new THREE.Vector3(ARCH_C.x+Math.cos(a)*r,0,ARCH_C.z+Math.sin(a)*r);
   const RIDE_R=Math.max(...ISL.map(I=>I.c.distanceTo(ARCH_C)+I.R))+14;
-  function outer(I){ const dir=I.c.clone().sub(ARCH_C).normalize(); const shore=I.c.clone().addScaledVector(dir,I.R-.8); const rS=shore.distanceTo(ARCH_C); return {I,shore,a:Math.atan2(shore.z-ARCH_C.z,shore.x-ARCH_C.x),rW:rS+4.8}; }
+  // 下海的出口:從島邊沿著「離群島中心」的方向游出去,整條路不能碰到吊橋、別的島或岸邊的東西
+  const EXITS={};
+  function exitClear(I,a,sx,sz){ if(BRIDGES.some(br=>segDist(sx,sz,br)<6)) return false; if(OBS.some(o=>Math.hypot(o.c.x-sx,o.c.z-sz)<o.r+1.2)) return false;
+    if(Object.values(D3).some(d=>Math.hypot(d.c.x-sx,d.c.z-sz)<PR+1.5)) return false; if(I.room&&I.room.near(sx,sz)) return false;
+    const r0=Math.hypot(sx-ARCH_C.x,sz-ARCH_C.z); for(let r=r0+.5;r<=RIDE_R+3;r+=.8){ const x=ARCH_C.x+Math.cos(a)*r, z=ARCH_C.z+Math.sin(a)*r;
+      if(BRIDGES.some(br=>segDist(x,z,br)<5.5)) return false; if(ISL.some(J=>J!==I&&Math.hypot(x-J.c.x,z-J.c.z)<J.R+3)) return false; if(Math.hypot(x-I.c.x,z-I.c.z)<I.R-1.2) return false; } return true; }
+  function outer(I){ if(EXITS[I.i]!==undefined) return EXITS[I.i]; const dc=I.c.clone().sub(ARCH_C); const a0=dc.lengthSq()>1?Math.atan2(dc.z,dc.x):0; let best=null;
+    for(let k=0;k<180&&!best;k++){ const a=a0+(k%2?1:-1)*Math.ceil(k/2)*Math.PI/90;
+      // 從群島中心沿角度 a 的射線,和這座島外緣的最遠交點就是出口
+      const ux=Math.cos(a), uz=Math.sin(a), ox=I.c.x-ARCH_C.x, oz=I.c.z-ARCH_C.z, R=I.R-.8, bq=ox*ux+oz*uz, disc=bq*bq-(ox*ox+oz*oz-R*R); if(disc<0) continue;
+      const t=bq+Math.sqrt(disc); if(t<=0) continue; const sx=ARCH_C.x+ux*t, sz=ARCH_C.z+uz*t; if(exitClear(I,a,sx,sz)) best={I,shore:new THREE.Vector3(sx,0,sz),a,rW:t+4.8}; }
+    EXITS[I.i]=best; return best; }
+  // 這座島沒有乾淨的出口(例如被橋圍住)時,走到最近一座有出口的島再下海
+  function exitFrom(I){ const O=outer(I); if(O) return O; let best=null, bd=1e9; for(const J of ISL){ const O2=outer(J); if(!O2) continue; const d=J.c.distanceTo(I.c); if(d<bd){ bd=d; best=O2; } } return best; }
   const fwd=(a0,a1)=>{ let d=a1-a0; while(d<0) d+=Math.PI*2; while(d>=Math.PI*2) d-=Math.PI*2; return d; };
   function spawnDolphinAt(a,r){ const v=RIDE.d||(RIDE.d=mkRideDolphin()); for(let i=LEAVING.length-1;i>=0;i--) if(LEAVING[i].v===v) LEAVING.splice(i,1);
     const p=pol(a,r); v.position.set(p.x,-1,p.z); v.rotation.set(0,headingY(a),0); v.visible=true; for(let i=0;i<14;i++) splashAt(v.position); return v; }
@@ -1528,7 +1541,7 @@ async function buildWorld(){
       offEnd(()=>offStart(kind)); return; }
     releaseIV(); if(bookEl) closeBook();
     if(focus){ focus=null; target=null; setHud(); try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
-    const O=outer(islandAt(nurse.position)); const pts=pathTo(O.shore); viewIsl=O.I.i;
+    const O=exitFrom(islandAt(nurse.position)); const pts=pathTo(O.shore); viewIsl=O.I.i;
     OFF={kind,phase:"walk",a:O.a,rW:O.rW,t:0}; inHut=false; faceCamera=false; mode="off"; setHud();
     if(kind==="swim") OFF.v=spawnDolphinAt(O.a,O.rW);   // the dolphin shows up straight away and waits at the beach
     route(pts,()=>{ if(!OFF) return; const kind=OFF.kind; poof(nurse.position); nurse.userData.setOutfit(outfitOf(kind)); mode="off"; faceCamera=true;
@@ -1539,7 +1552,7 @@ async function buildWorld(){
     if(["cruise","return","hopback","leave"].includes(OFF.phase)) return;
     if(OFF.phase==="hop"){ OFF.r=OFF.rW; }
     // land on the island whose outer beach comes up next along the loop
-    let best=null; for(const I of ISL){ const O=outer(I); const d=fwd(OFF.a,O.a); const dd=d<.35?d+Math.PI*2:d; if(!best||dd<best.dd) best={O,dd}; }
+    let best=null; for(const I of ISL){ const O=outer(I); if(!O) continue; const d=fwd(OFF.a,O.a); const dd=d<.35?d+Math.PI*2:d; if(!best||dd<best.dd) best={O,dd}; }
     OFF.L=best.O; OFF.aEnd=OFF.a+best.dd; OFF.phase="cruise"; OFF.t=0; setHud(); }
   function offTick(dt,tt){
     for(let i=puffs.length-1;i>=0;i--){ const m=puffs[i]; m.userData.t+=dt; if(m.userData.g) m.userData.v.y-=9*dt; m.position.addScaledVector(m.userData.v,dt); if(!m.userData.g) m.scale.setScalar(1+m.userData.t*2.5); m.material.opacity=.9*(1-m.userData.t/.7); if(m.userData.t>.7){ scene.remove(m); puffs.splice(i,1); } }
@@ -1592,14 +1605,14 @@ async function buildWorld(){
       if(k>=1){ OFF.phase="hop"; OFF.t=0; OFF.from=nurse.position.clone(); faceCamera=false; } return; }
     if(OFF.phase==="hop"){ const k=Math.min(1,OFF.t/.8); place(OFF.a,OFF.rW); v.rotation.y=headingY(OFF.a); v.updateMatrixWorld(); const to=v.localToWorld(v.userData.seat.clone());
       nurse.position.lerpVectors(OFF.from,to,k); nurse.position.y+=Math.sin(k*Math.PI)*3; ud.legs.forEach(l=>l.rotation.x=-.6*Math.sin(k*Math.PI));
-      if(k>=1){ OFF.phase="ride"; OFF.t=0; OFF.r=OFF.rW; const dir=new THREE.Vector3(Math.cos(OFF.a),0,Math.sin(OFF.a)); const cp=to.clone().addScaledVector(dir,18).add(new THREE.Vector3(0,9,0)).addScaledVector(new THREE.Vector3(-dir.z,0,dir.x),-8);
+      if(k>=1){ OFF.phase="ride"; OFF.t=0; OFF.r=OFF.rW; OFF.rStart=OFF.rW; const dir=new THREE.Vector3(Math.cos(OFF.a),0,Math.sin(OFF.a)); const cp=to.clone().addScaledVector(dir,18).add(new THREE.Vector3(0,9,0)).addScaledVector(new THREE.Vector3(-dir.z,0,dir.x),-8);
         tweenCam(cp,to.clone().add(new THREE.Vector3(0,1.5,0)),1400); OFF.followAt=performance.now()+1450; OFF.last=null; } return; }
     if((free||surfK)&&(OFF.phase==="ride"||OFF.phase==="cruise"||OFF.phase==="return")&&Math.random()<dt*14) splashAt(v.position);
     if(SNORKEL&&free&&OFF.phase==="ride"){ OFF.snk=(OFF.snk===undefined?4:OFF.snk)-dt; if(OFF.snk<=0){ OFF.snk=6+Math.random()*6; snorkelFind(); } }
-    if(OFF.phase==="ride"||OFF.phase==="cruise"){ const sp=(free?4.6:swim?8.5:surfK?10:supK?3.6:6)*(OFF.phase==="cruise"?2.6:1); OFF.r+=(RIDE_R-OFF.r)*Math.min(1,dt*.5); OFF.a+=sp/OFF.r*dt; const r=OFF.r+Math.sin(OFF.a*3)*2.5;
+    if(OFF.phase==="ride"||OFF.phase==="cruise"){ const sp=(free?4.6:swim?8.5:surfK?10:supK?3.6:6)*(OFF.phase==="cruise"?2.6:1); OFF.r+=(RIDE_R-OFF.r)*Math.min(1,dt*.5); { const r1=OFF.rStart||OFF.r, k=Math.min(1,Math.max(0,(OFF.r-r1)/Math.max(1,RIDE_R-3-r1))); OFF.a+=sp/OFF.r*dt*(OFF.phase==="cruise"?1:Math.max(.04,k*k)); } const r=OFF.r+Math.sin(OFF.a*3)*2.5*Math.min(1,Math.max(0,(OFF.r-(OFF.rStart||OFF.r))/8));
       const hop=swim&&!free?Math.max(0,Math.sin(OFF.t*2.1))*.9:0; place(OFF.a,r,hop); v.rotation.y=headingY(OFF.a)-Math.cos(OFF.a*3)*.15; anim(); seatNurse(); follow();
       if(OFF.phase==="cruise" && OFF.a>=OFF.aEnd-.32){ OFF.phase="return"; OFF.t=0; OFF.r0=r; OFF.a0=OFF.a; } return; }
-    if(OFF.phase==="return"){ const k=Math.min(1,OFF.t/2.8), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; const a=THREE.MathUtils.lerp(OFF.a0,OFF.aEnd,e), r=THREE.MathUtils.lerp(OFF.r0,OFF.L.rW,e);
+    if(OFF.phase==="return"){ const k=Math.min(1,OFF.t/2.8), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; const a=THREE.MathUtils.lerp(OFF.a0,OFF.aEnd,Math.min(1,e*2.5)), r=THREE.MathUtils.lerp(OFF.r0,OFF.L.rW,e);
       place(a,r); v.rotation.y=headingY(a); v.rotation.z=0; v.rotation.x=0; seatNurse(); follow();
       if(k>=1){ OFF.a=a; OFF.phase="hopback"; OFF.t=0; OFF.from=nurse.position.clone(); } return; }
     if(OFF.phase==="hopback"){ const k=Math.min(1,OFF.t/.8); if(board&&OFF.t<dt*1.5){ nurse.quaternion.setFromAxisAngle(up0,v.rotation.y+Math.PI/2); ud.body.rotation.set(0,0,0); ud.head.rotation.y=0; ud.legs.forEach(l=>l.rotation.set(0,0,0)); } if(free&&OFF.t<dt*1.5){ nurse.quaternion.setFromAxisAngle(up0,v.rotation.y+Math.PI/2); ud.body.rotation.z=0; ud.head.rotation.y=0; ud.legs.forEach(l=>l.rotation.set(0,0,0)); } const to=OFF.L.shore.clone(); to.y=groundY(to.x,to.z); nurse.position.lerpVectors(OFF.from,to,k); nurse.position.y+=Math.sin(k*Math.PI)*3;
@@ -1765,7 +1778,8 @@ async function buildWorld(){
         pod.x+=Math.sin(pod.dir)*6; pod.z+=Math.cos(pod.dir)*6; x0=pod.x+(Math.random()-.5)*10; z0=pod.z+(Math.random()-.5)*10; dir=pod.dir+(Math.random()-.5)*.2; }
       else { const az=camAz()+(Math.random()-.5)*(j.far?3.0:2.2); const r=j.far?80+Math.random()*100:38+Math.random()*20;
         x0=Math.sin(az)*r; z0=Math.cos(az)*r; dir=az+Math.PI/2*(Math.random()<.5?1:-1)+(Math.random()-.5)*.6; }
-      for(let s=0;s<14&&(coastR(x0,z0)<38||coastR(x0+Math.sin(dir)*28,z0+Math.cos(dir)*28)<38);s++){ x0=x0*1.15+ARCH_C.x*.0; z0=z0*1.15; }
+      const nearBr=(x,z)=>{ for(let k=0;k<=6;k++){ const px=x+Math.sin(dir)*28*k/6, pz=z+Math.cos(dir)*28*k/6; if(BRIDGES.some(br=>segDist(px,pz,br)<8)||coastR(px,pz)<36) return true; } return false; };
+      for(let s=0;s<14&&(coastR(x0,z0)<38||coastR(x0+Math.sin(dir)*28,z0+Math.cos(dir)*28)<38||nearBr(x0,z0));s++){ x0=x0*1.15+ARCH_C.x*.0; z0=z0*1.15; }
       const fs=j.far?1.5:1; const L={dolphin:15,flying:32}[j.k]*fs, H={dolphin:6.5,flying:3.2}[j.k]*fs, T={dolphin:1.7,flying:2.8}[j.k]*(j.far?1.2:1);
       j.cfg={x0,z0,dx:Math.sin(dir),dz:Math.cos(dir),L,H,T}; j.t=0; j.g.visible=true; splash(x0,z0,j.k!=="flying"); }
     const api={picks, gullNow:()=>{ gullCD=0; }, gulls, mkDolphin:()=>cetacean(false), _orca(i){ const o=orcas[i]; return [o.g.position.x,o.g.position.y,o.g.position.z]; }, _pose(i,x,y,z,ry){ const j=jumpers[i]; j.t=2; j.wait=999; j.g.visible=true; j.g.position.set(x,y,z); j.g.rotation.set(0,ry,.15); j.g.userData.posed=true; }, update(dt,tt){
@@ -2459,7 +2473,12 @@ async function buildWorld(){
     const ptOK=(I,x,z)=>{ const r=Math.hypot(x-I.c.x,z-I.c.z); if(r>I.R-1.4||r<(I.ring?I.ring+1:PR+2)) return false;
       if(!Object.values(D3).every(d=>Math.hypot(d.c.x-x,d.c.z-z)>PR+1.2)) return false; if(I.room&&I.room.near(x,z)) return false; if(Math.hypot(x-HUT.pos.x,z-HUT.pos.z)<6.5) return false;
       if(trees.some(t=>t.visible&&Math.hypot(t.position.x-x,t.position.z-z)<1.6)) return false; if(OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+1.0)) return false; return BRIDGES.every(br=>segDist(x,z,br)>2.5); };
-    const clear=(I,a,b,sea)=>{ const d=Math.hypot(b.x-a.x,b.z-a.z), n2=Math.max(1,Math.ceil(d/.7)); for(let k=1;k<=n2;k++){ const x=a.x+(b.x-a.x)*k/n2, z=a.z+(b.z-a.z)*k/n2; const r=Math.hypot(x-I.c.x,z-I.c.z); if(sea&&r>I.R-1.6) continue; if(!ptOK(I,x,z)) return false; } return true; };
+    const clear=(I,a,b,sea)=>{ const d=Math.hypot(b.x-a.x,b.z-a.z), n2=Math.max(1,Math.ceil(d/.7)); for(let k=1;k<=n2;k++){ const x=a.x+(b.x-a.x)*k/n2, z=a.z+(b.z-a.z)*k/n2; const r=Math.hypot(x-I.c.x,z-I.c.z); if(sea&&r>I.R-1.6){ if(!seaOK(I,x,z)) return false; continue; } if(!ptOK(I,x,z)) return false; } return true; };
+    // 海裡:不能碰到吊橋(含橋墩)或別的島
+    const seaOK=(I,x,z)=>BRIDGES.every(br=>segDist(x,z,br)>4.5)&&ISL.every(J=>J===I||Math.hypot(x-J.c.x,z-J.c.z)>J.R+1.5);
+    const seaClear=(I,a,b)=>{ const d=Math.hypot(b.x-a.x,b.z-a.z), n2=Math.max(1,Math.ceil(d/.7)); for(let k=1;k<=n2;k++){ const x=a.x+(b.x-a.x)*k/n2, z=a.z+(b.z-a.z)*k/n2; if(Math.hypot(x-I.c.x,z-I.c.z)>I.R-1.6&&!seaOK(I,x,z)) return false; } return true; };
+    // 繞島游的下一個點:先試著往前游,前面有橋就掉頭
+    const nextSwim=(T,I,from)=>{ const a0=Math.atan2(from.z-I.c.z,from.x-I.c.x); for(const sg of [T.sg||1,-(T.sg||1)]) for(const st of [.6,.35]){ const a=a0+sg*st; const p=I.c.clone().add(new THREE.Vector3(Math.cos(a)*(I.R+8),0,Math.sin(a)*(I.R+8))); if(seaClear(I,from,p)){ T.sg=sg; return p; } } return null; };
     const pickLand=(I,from)=>{ for(let k=0;k<120;k++){ const a=Math.random()*Math.PI*2, r0=(I.ring?I.ring+1:PR+2), r=r0+Math.random()*(I.R-3-r0); const p=new THREE.Vector3(I.c.x+Math.cos(a)*r,0,I.c.z+Math.sin(a)*r); if(ptOK(I,p.x,p.z)&&(!from||clear(I,from,p))) return p; } return null; };
     const pickSea=(I,from)=>{ const a0=Math.atan2(from.z-I.c.z,from.x-I.c.x); for(let k=0;k<20;k++){ const a=a0+(k%2?1:-1)*Math.ceil(k/2)*.12; const p=I.c.clone().add(new THREE.Vector3(Math.cos(a)*(I.R+7),0,Math.sin(a)*(I.R+7))); if(clear(I,from,p,true)) return p; } return null; };
     function mkTurtle(){ const g=new THREE.Group();
@@ -2498,11 +2517,11 @@ async function buildWorld(){
       g.position.y=inSea?waveH(g.position.x,g.position.z,tt,ENV.wave())-.9:groundY(g.position.x,g.position.z);
       const fp=tt*(inSea?3:5)+T.ph; T.fl.forEach((p,k)=>{ p.rotation.y=Math.sin(fp+(k%2?Math.PI:0)+(k<2?0:Math.PI/2))*(inSea?.7:.4); p.rotation.z=inSea?Math.sin(fp)*.3:0; }); T.hd.position.y=.5+Math.sin(tt*1.3+T.ph)*.04; T.hd.rotation.y=Math.sin(tt*.7+T.ph)*.3;
       if(d<=.1){ if(T.mode==="walk"){ const sea=Math.random()<.35?pickSea(I,g.position):null; if(sea){ T.mode="toSea"; T.tgt=sea; } else { T.tgt=pickLand(I,g.position)||g.position.clone(); T.wait=1+Math.random()*4; } }
-        else if(T.mode==="toSea"){ T.mode="swim"; T.n=3; const a=Math.atan2(g.position.z-I.c.z,g.position.x-I.c.x)+.6; T.tgt=I.c.clone().add(new THREE.Vector3(Math.cos(a)*(I.R+8),0,Math.sin(a)*(I.R+8))); }
-        else if(T.mode==="swim"){ if(--T.n>0){ const a=Math.atan2(g.position.z-I.c.z,g.position.x-I.c.x)+.6; T.tgt=I.c.clone().add(new THREE.Vector3(Math.cos(a)*(I.R+8),0,Math.sin(a)*(I.R+8))); }
+        else if(T.mode==="toSea"){ T.mode="swim"; T.n=3; const p=nextSwim(T,I,g.position); if(p) T.tgt=p; else T.n=1; }
+        else if(T.mode==="swim"){ const p=--T.n>0?nextSwim(T,I,g.position):null; if(p){ T.tgt=p; }
           else { // 找一個上得了岸、路上沒有東西的點
-            let best=null; for(let k=0;k<30&&!best;k++){ const a=Math.random()*Math.PI*2; const p=I.c.clone().add(new THREE.Vector3(Math.cos(a)*(I.R-2.5),0,Math.sin(a)*(I.R-2.5))); if(ptOK(I,p.x,p.z)) best=p; }
-            T.mode="land"; T.tgt=best?best.clone().add(best.clone().sub(I.c).setY(0).normalize().multiplyScalar(9)):g.position.clone(); T.shore=best; } }
+            let best=null; for(let k=0;k<60&&!best;k++){ const a=Math.random()*Math.PI*2; const p=I.c.clone().add(new THREE.Vector3(Math.cos(a)*(I.R-2.5),0,Math.sin(a)*(I.R-2.5))); const off=p.clone().add(p.clone().sub(I.c).setY(0).normalize().multiplyScalar(9)); if(ptOK(I,p.x,p.z)&&seaClear(I,g.position,off)&&seaClear(I,off,p)) best=p; }
+            if(!best){ T.n=2; T.sg=-(T.sg||1); T.tgt=nextSwim(T,I,g.position)||g.position.clone(); } else { T.mode="land"; T.tgt=best.clone().add(best.clone().sub(I.c).setY(0).normalize().multiplyScalar(9)); T.shore=best; } } }
         else if(T.mode==="land"){ T.mode="walk"; T.tgt=T.shore||pickLand(I)||g.position.clone(); } } }); }};
   })();
   function endPick(){ const ud=nurse.userData; BUSY=null; mode="idle"; faceCamera=true; ud.body.position.y=0; ud.body.rotation.x=0; ud.armR.sh.rotation.set(-.95,0,.12); ud.armL.sh.rotation.set(-.85,0,-.12); }
@@ -2926,6 +2945,7 @@ async function buildWorld(){
     orHandoff:(cb)=>{ let a=false,b=false; const fin=()=>{ if(a&&b) cb&&cb(); };
       OR.handoff(()=>{ a=true; fin(); }); const dest=OR.toW(-13.4,3.2); faceCamera=false; route(pathTo(dest),()=>{ mode="idle"; faceCamera=true; b=true; fin(); });
       const tgt=OR.toW(-9,2); tgt.y=TOP; const pos=OR.toW(-6,24); pos.y=TOP+26; tweenCam(pos,tgt,1600); }, atOR:()=>viewIsl===3, inOR:()=>ISL[3].room.inside(nurse.position),
+    _exits:()=>ISL.map(I=>{ const O=outer(I); return O?[+O.a.toFixed(2),+O.rW.toFixed(1),O.I.i]:null; }), _br:()=>BRIDGES.map(b=>[b.a.x,b.a.z,b.b.x,b.b.z]), _off:()=>OFF&&{phase:OFF.phase,kind:OFF.kind}, _isl:()=>ISL.map(I=>[I.c.x,I.c.z,I.R]), _goIsl:(i)=>{ const I=ISL[i]; nurse.position.set(I.c.x+(I.ring?I.ring+2:PR+3),TOP,I.c.z); },
     _pet:(i)=>petTurtle(TURTLES.list[i||0].g), _turtles:()=>TURTLES.list, _snk:()=>snorkelFind(), _gull:()=>LIFE.gullNow(), _gulls:()=>LIFE.gulls, _fallen:()=>FALLEN, _bonus:()=>window.__coins(),
     _dropLitter:()=>{ const lit=mkLitter(0xE46F8E,false); lit.position.set(nurse.position.x+2,TOP+.3,nurse.position.z+1); lit.userData={v:new THREE.Vector3(),t:0,act:"pick",item:"垃圾",fallen:true,rest:true,age:20}; scene.add(lit); FALLEN.push(lit); return lit; },
     offStart:(k)=>{ const was=SNORKEL; SNORKEL=k==="snorkel"; offStart(k==="snorkel"?"free":k); if(SNORKEL&&!was&&OFF) toast("🤿 戴上面鏡去浮潛!在海裡游一游,會撿到金幣、垃圾、漂流瓶題目或各種收藏品"); setHud(); }, offEnd:()=>offEnd(), fishStart:()=>fishStart(), fishEnd:()=>fishEnd(), _approach:(k)=>approach(k,k==="iv"?IV.g:k==="stool"?STOOL.g:LOUNGERS[0]), _obs:()=>OBS.map(o=>[+o.c.x.toFixed(1),+o.c.z.toFixed(1),+o.r.toFixed(2)]), _act:(k,i)=>actOn(k,k==="wish"?FOUNTAIN:k==="palm"?trees.filter(t=>t.visible)[i||0]:k==="pick"?LIFE.picks[i||0]:k==="castle"?BEACH.castles[i||0]:BEACH.rings[i||0]), _trees:()=>{ const c={}; trees.forEach(t=>{ const k=islandAt(t.position).i+(t.visible?"":"h"); c[k]=(c[k]||0)+1; }); return c; }, _busy:()=>[!!BUSY,!!SAND,!!RINGPOST,FALLEN.length,OFF&&OFF.ring], _useOrb:()=>useOrb(), _act2:(k)=>{ if(k==="boat") boatToggle(BEACH.boats[0]); if(k==="heart") liftHeart(BEACH.hearts[0]); }, _st:()=>({boat:!!BOAT,carry:!!CARRY,turtles:TURTLES.list.map(t=>t.mode+":"+t.g.position.x.toFixed(1)), tpos:TURTLES.list.map(t=>[t.g.position.x,t.g.position.y,t.g.position.z,t.mode]),heart:BEACH.hearts[0]&&BEACH.hearts[0].position.toArray().map(v=>+v.toFixed(1)),boatPos:BEACH.boats[0]&&BEACH.boats[0].position.toArray().map(v=>+v.toFixed(1)),nurse:nurse.position.toArray().map(v=>+v.toFixed(1))}), _walk:(x,z)=>walkHere(new THREE.Vector3(x,0,z)), _arm:(sx,sy,sz,fx)=>{ const ud=nurse.userData; ud.armR.sh.rotation.set(sx,sy,sz); ud.armR.fore.rotation.x=fx; nurse.updateMatrixWorld(true); const h=ud.armR.hand.getWorldPosition(new THREE.Vector3()), hd=ud.head.getWorldPosition(new THREE.Vector3()); const inv=nurse.matrixWorld.clone().invert(); h.applyMatrix4(inv); hd.applyMatrix4(inv); return {hand:h.toArray().map(v=>+v.toFixed(2)), head:hd.toArray().map(v=>+v.toFixed(2))}; }, _coins:()=>BURIED.list.filter(g=>g.visible).length, _litter:()=>FALLEN.filter(o=>o.userData.item==="垃圾").length, _collect:(it)=>{ const o=it==="金幣"?BURIED.list.find(g=>g.visible):FALLEN.find(x=>x.userData.item==="垃圾"&&x.userData.rest); if(o) collect(o); return !!o; }, _dance:()=>dance(), _ivPos:()=>IV.g.position.toArray().map(v=>+v.toFixed(2)), _notes:()=>NOTES.length, _pathTo:(x,z)=>pathTo(new THREE.Vector3(x,0,z)).map(p=>[+p.x.toFixed(1),+p.z.toFixed(1)]), _room:()=>{ const R=ISL[3].room; return {doorOut:[R.doorOut.x,R.doorOut.z], c:[ISL[3].c.x,ISL[3].c.z], shore:[outer(ISL[3]).shore.x,outer(ISL[3]).shore.z], inside:(x,z)=>R.inside({x,z})}; }, _board:(i)=>takeBoard(BEACH.boards[i||0]), _vball:()=>vballPlay(BEACH.vb.net), _boards:()=>BEACH.boards.map(g=>[g.userData.kind,+g.position.x.toFixed(1),+g.position.z.toFixed(1),g.userData.bd[0].visible]), _vb:()=>BEACH.vb.net&&BEACH.vb.net.userData.ball.position.toArray().map(x=>+x.toFixed(2)), _lounge:()=>!!LOUNGE, _orb:()=>ORB.g.visible, jumpTo:(s,b)=>jumpTo(s,b), _fish:()=>FISH&&FISH.phase, _off:()=>OFF&&{ph:OFF.phase,kind:OFF.kind}, setFace:(f)=>{ manualFace=f; autoNext=0; }, react:(k)=>react(k), _face:()=>curFace, _nb:()=>{ const b=new THREE.Box3().setFromObject(nurse); return [b.min.toArray(),b.max.toArray(),nurse.scale.x]; }, _dbg:()=>({off:OFF&&{ph:OFF.phase,a:+OFF.a.toFixed(2),r:OFF.r&&+OFF.r.toFixed(1)},v:OFF&&OFF.v&&OFF.v.position.toArray().map(x=>+x.toFixed(1)),tgt:controls.target.toArray().map(x=>+x.toFixed(1)),cam:camera.position.toArray().map(x=>+x.toFixed(1)),tw:!!camTween}), dance:()=>dance(), goIV:()=>goIV(), goStool:()=>goStool(), _stool:()=>onStool, _sb:()=>{ const b=new THREE.Box3().setFromObject(STOOL.g); return [STOOL.g.parent===nurse, STOOL.g.visible, b.min.toArray().map(v=>+v.toFixed(2)), b.max.toArray().map(v=>+v.toFixed(2)), nurse.position.toArray().map(v=>+v.toFixed(2))]; }, goIsland:(i,inst)=>goIsland(i,inst),
