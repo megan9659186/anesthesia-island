@@ -368,3 +368,19 @@ body.immersive .reset{bottom:max(14px,env(safe-area-inset-bottom,0px));right:max
 #orPanel .rev{margin:0 0 8px;padding-left:20px;font-size:12.5px;line-height:1.5}
 #orPanel .rev li{margin:0 0 6px} #orPanel .rev li b{display:block;font-weight:600} #orPanel .rev li span{color:var(--ink-2)}
 #orPanel .rev li.no b{color:#B23A3A} #orPanel .rev li.ok b{color:#2E7D6E}
+
+/* 電腦大螢幕:字放大一些;模擬開刀房的題目區置中並限制寬度,一行不會拉得太長 */
+@media (min-width:1100px){
+  #orPanel{left:50%;right:auto;transform:translateX(-50%);width:min(1480px,calc(100% - 24px));max-height:50%;padding:14px 20px 16px}
+  #orPanel .kick{font-size:14px} #orPanel h3{font-size:21px}
+  #orPanel .pt{font-size:15px;padding:6px 11px} #orPanel .story{font-size:16.5px;line-height:1.6}
+  #orPanel .vit{gap:6px} #orPanel .vit div{font-size:12.5px;padding:3px 10px} #orPanel .vit b{font-size:17px}
+  #orPanel .q{font-size:16.5px;margin-bottom:7px}
+  #orPanel .opt{font-size:16px;line-height:1.5;padding:9px 12px;margin-bottom:7px} #orPanel .opt b{width:25px;height:25px;font-size:13.5px}
+  #orPanel .fb{font-size:15px} #orPanel .nav button{font-size:15.5px;padding:9px 12px}
+  #orPanel .scn b{font-size:16.5px} #orPanel .scn small{font-size:14px}
+  #orPanel .end{font-size:15.5px} #orPanel .end b{font-size:19px} #orPanel .ck,#orPanel .rev{font-size:14.5px}
+  #orPanel .x,#orPanel .mini{width:34px;height:34px;font-size:15px}
+  .dsec p,.dsec ul{font-size:16.5px} .dsec h5{font-size:14px} .aqs{font-size:16px}
+  body.immersive .wxtoggle{font-size:15px;padding:8px 16px} .hint{font-size:14.5px} .toast{font-size:16px}
+}
