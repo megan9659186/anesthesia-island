@@ -24,7 +24,7 @@ const mgLabel = t => "";
 
 /* AI 猜題分到最相關的主題(與該題相似考古題重疊最多者) */
 const AIBY = {}; // topicId -> [{sid,i}]
-SYS.forEach(s=>s.aiq.forEach((q,i)=>{ let best=null,bn=0; const ts0=topicsOf(s.id), hasOrig=ts0.some(t=>!t.mg), mq=/^Morgan/.test(q.src||""); ts0.filter(t=>(hasOrig&&!mq)?!t.mg:true).forEach(t=>{ const n=q.refs.filter(r=>t.refs.includes(r)).length; if(n>bn){bn=n;best=t.id;} }); if(best) (AIBY[best]=AIBY[best]||[]).push({sid:s.id,i}); }));
+SYS.forEach(s=>s.aiq.forEach((q,i)=>{ let best=null,bn=0; if(q.t&&T.some(t=>t.id===q.t)){ (AIBY[q.t]=AIBY[q.t]||[]).push({sid:s.id,i}); return; } const ts0=topicsOf(s.id), hasOrig=ts0.some(t=>!t.mg), mq=/^Morgan/.test(q.src||""); ts0.filter(t=>(hasOrig&&!mq)?!t.mg:true).forEach(t=>{ const n=q.refs.filter(r=>t.refs.includes(r)).length; if(n>bn){bn=n;best=t.id;} }); if(best) (AIBY[best]=AIBY[best]||[]).push({sid:s.id,i}); }));
 
 /* ---------- stats ---------- */
 const nRefs = new Set(T.flatMap(t=>t.refs)).size;
@@ -333,7 +333,7 @@ function aiHTML(t,whole){
   const qs=list.map(({sid,i},n)=>{ const q=sysById[sid].aiq[i]; const key=sid+":"+i; const p=AIPICK[key]; const dn=p!==undefined;
     return `<div class="aq" data-key="${key}"><div class="aqs"><span class="aqn">${n+1}</span>${q.q}</div>
       <div class="opts">${q.o.map((o,k)=>`<button type="button" class="opt${dn&&k===q.a?" right":""}${dn&&k===p&&p!==q.a?" wrong":""}" data-k="${k}"${dn?" disabled":""}><b>${LAB[k]}</b><span>${o}</span></button>`).join("")}</div>
-      ${dn?`<div class="ans"><b>${p===q.a?"答對了":"正解 "+LAB[q.a]}</b>　${q.e}${q.src?`<div class="srcline">📖 ${q.src}</div>`:""}<div class="simref">相似考古題:${q.refs.map(r=>{const k=refInfo(r);return `<button type="button" class="qchip${done.has(r)?" done":""}" data-ref="${r}">${k.y} ${k.s} ${k.n}</button>`;}).join("")}</div></div>`:""}</div>`; }).join("");
+      ${dn?`<div class="ans"><b>${p===q.a?"答對了":"正解 "+LAB[q.a]}</b>　${q.e}${q.refs.length?`<div class="simref">相似考古題:`:""}${q.refs.map(r=>{const k=refInfo(r);return `<button type="button" class="qchip${done.has(r)?" done":""}" data-ref="${r}">${k.y} ${k.s} ${k.n}</button>`;}).join("")}${q.refs.length?"</div>":""}</div>`:""}</div>`; }).join("");
   const keys=list.map(({sid,i})=>sid+":"+i); const ans=keys.filter(k=>AIPICK[k]!==undefined);
   const ok=ans.filter(k=>{ const [sid,i]=k.split(":"); return sysById[sid].aiq[+i].a===AIPICK[k]; }).length;
   return {n:list.length, own:own.length>0, html:`${own.length||whole?"":`<p class="meta">這個主題沒有專屬猜題,以下是${s.name}街區的全部 AI 猜題。</p>`}
@@ -2225,7 +2225,7 @@ async function buildWorld(){
       P.innerHTML=`<button type="button" class="x" data-wx aria-label="關閉">✕</button><div class="kick">⛲ 許願池 · ${sy.name}</div><h3>丟了一枚硬幣,抽到一題</h3>
         <div class="pt">答對可得金幣(和書裡的 AI 猜題共用,同一題只算一次)</div><div class="q">${q.q}</div>`+
         q.o.map((o,k)=>`<button type="button" class="opt${dn&&k===q.a?" ok":""}${dn&&k===pk&&pk!==q.a?" no":""}" data-wk="${k}"${dn?" disabled":""}><b>${LAB[k]}</b><span>${o}</span></button>`).join("")+
-        (dn?`<div class="fb ${pk===q.a?"ok":"no"}"><b>${pk===q.a?"答對了!":"正解 "+LAB[q.a]}</b>　${q.e}${q.src?`<div style="font-size:12.5px;color:var(--ink-3);margin-top:4px">📖 ${q.src}</div>`:""}</div>`:"")+
+        (dn?`<div class="fb ${pk===q.a?"ok":"no"}"><b>${pk===q.a?"答對了!":"正解 "+LAB[q.a]}</b>　${q.e}</div>`:"")+
         (dn?`<div class="nav">${topic?`<button type="button" data-wbook>📖 去讀這本書</button>`:""}<button type="button"${topic?' class="sec"':""} data-wagain>🪙 再許一個願</button></div>`:""); };
     draw(); P.hidden=false; P.scrollTop=0;
     P.onclick=(e)=>{ const b=e.target.closest("button"); if(!b) return;
