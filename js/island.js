@@ -2009,6 +2009,8 @@ async function buildWorld(){
     function loop(buf){ const s=ac.createBufferSource(); s.buffer=buf; s.loop=true; s.start(0,Math.random()*buf.duration); return s; }
     function chain(src,...ns){ let x=src; ns.forEach(n=>{ x.connect(n); x=n; }); return x; }
     function init(){
+      // iPhone 靜音開關:把網頁聲音設成「播放媒體」,才不會被靜音模式一起關掉(Safari 16.4 以上支援)
+      try{ if(navigator.audioSession) navigator.audioSession.type="playback"; }catch(e){}
       ac=new (window.AudioContext||window.webkitAudioContext)(); master=ac.createGain(); master.gain.value=0; master.connect(ac.destination);
       // 生理監視器的聲音走另一條線,不受海邊音量影響
       monBus=ac.createGain(); monBus.gain.value=0; monBus.connect(ac.destination);
@@ -2108,8 +2110,12 @@ async function buildWorld(){
       if(on){ if(!ac) init(); if(ac.state==="suspended") await ac.resume(); master.gain.setTargetAtTime(.75,ac.currentTime,.6); nextWave=0; }
       else if(ac){ master.gain.setTargetAtTime(0,ac.currentTime,.25); monBus.gain.setTargetAtTime(0,ac.currentTime,.1); } }
     btn.onclick=()=>setOn(!on);
-    // browsers only allow audio after a tap: if the user left sound on last time, start it on their first tap
-    if(pref){ const first=()=>{ window.removeEventListener("pointerdown",first,true); if(!on) setOn(true); }; window.addEventListener("pointerdown",first,true); }
+    // 瀏覽器規定點一下才能出聲:上次有開音效的人,第一次點畫面就自動開;iPhone 要在 touchend/click 才算數,所以三種都聽
+    const UNLOCK=["pointerdown","touchend","click"];
+    if(pref){ const first=()=>{ UNLOCK.forEach(ev=>window.removeEventListener(ev,first,true)); if(!on) setOn(true); }; UNLOCK.forEach(ev=>window.addEventListener(ev,first,true)); }
+    // 切到別的 App 再回來,iPhone 會把聲音暫停(狀態變成 suspended/interrupted):下一次點畫面或回到網頁時自動恢復
+    const wake=()=>{ if(on&&ac&&ac.state!=="running"){ try{ if(navigator.audioSession) navigator.audioSession.type="playback"; }catch(e){} ac.resume().catch(()=>{}); } };
+    UNLOCK.forEach(ev=>window.addEventListener(ev,wake,true)); document.addEventListener("visibilitychange",()=>{ if(!document.hidden) wake(); });
     ui();
     ENV.onBolt=()=>{ if(on&&ac) thunder(); };
     // 拉著點滴架跳舞時唱一小段(原創的簡單旋律)
