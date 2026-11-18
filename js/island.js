@@ -2217,9 +2217,21 @@ async function buildWorld(){
       return [...(aIn?[arcp[0]]:detour(A,arcp[0],depth+1)),...arcp.slice(1),...(bIn?[B]:detour(arcp[n],B,depth+1))]; }
     return [B]; }
   function avoidPts(pts){ const out=[]; let prev=nurse.position.clone(); for(const p of pts){ out.push(...detour(prev,new THREE.Vector3(p.x,0,p.z))); prev=p; } return out; }
-  function route(pts,done){ pts=avoidPts(pts); let ms=0, prev=nurse.position.clone(); pts.forEach(p=>{ ms+=Math.max(250,Math.hypot(p.x-prev.x,p.z-prev.z)/10*1000); prev=p; }); routeMs=ms;
-    const step=i=>{ if(i>=pts.length){ done&&done(); return; } walkTo(pts[i],()=>step(i+1),true); }; step(0); }
-  function walkTo(p,onArrive,chain){ const from=nurse.position.clone(); const dist=Math.hypot(p.x-from.x,p.z-from.z); walk={from,to:p.clone(),s:performance.now(),d:chain?Math.max(250,dist/10*1000):Math.max(700,dist/10*1000),onArrive,chain:!!chain}; mode="walk"; }
+  // 走路:整條路線一次規劃好,轉角修成圓弧,沿路連續前進(起步加速、到點前減速),不再一段一段走走停停
+  const WALK_V=10, WALK_A=18;
+  function smoothPath(P){ if(P.length<3) return P; const out=[P[0]];
+    for(let i=1;i<P.length-1;i++){ const a=P[i-1], b=P[i], c=P[i+1]; const l1=Math.hypot(b.x-a.x,b.z-a.z), l2=Math.hypot(c.x-b.x,c.z-b.z); const r=Math.min(1.1,l1*.45,l2*.45);
+      if(r<.05){ out.push(b); continue; } const p0=b.clone().lerp(a,r/l1), p2=b.clone().lerp(c,r/l2);
+      for(let k=0;k<=5;k++){ const t=k/5, u=1-t; out.push(new THREE.Vector3(u*u*p0.x+2*u*t*b.x+t*t*p2.x,0,u*u*p0.z+2*u*t*b.z+t*t*p2.z)); } }
+    out.push(P[P.length-1]); return out; }
+  function route(pts,done){ pts=avoidPts(pts); const raw=[nurse.position.clone().setY(0)]; pts.forEach((p,i)=>{ const q=new THREE.Vector3(p.x,0,p.z), l=raw[raw.length-1], last=i===pts.length-1; if(Math.hypot(q.x-l.x,q.z-l.z)>(last?.05:.35)) raw.push(q); else if(last&&raw.length>1) raw[raw.length-1]=q; });
+    if(raw.length===1&&pts.length) raw.push(new THREE.Vector3(pts[pts.length-1].x,0,pts[pts.length-1].z));
+    const P=smoothPath(raw), cum=[0]; for(let i=1;i<P.length;i++) cum.push(cum[i-1]+Math.hypot(P[i].x-P[i-1].x,P[i].z-P[i-1].z));
+    const total=cum[cum.length-1]; routeMs=(total/WALK_V+WALK_V/WALK_A)*1000;
+    if(total<.05){ walk=null; done&&done(); return; }
+    walk={P,cum,total,s:0,v:0,i:0,ph:walk&&walk.ph||0,onArrive:done}; mode="walk"; }
+  function walkPoint(W,s){ s=Math.max(0,Math.min(W.total,s)); let i=Math.min(W.i,W.cum.length-2); while(i>0&&W.cum[i]>s) i--; while(i<W.cum.length-2&&W.cum[i+1]<s) i++;
+    const seg=W.cum[i+1]-W.cum[i], k=seg>1e-6?(s-W.cum[i])/seg:0; return {x:W.P[i].x+(W.P[i+1].x-W.P[i].x)*k, z:W.P[i].z+(W.P[i+1].z-W.P[i].z)*k, i}; }
 
   function walkHere(p){ fishEnd();
     const I=islandAt(p); const rx=p.x-I.c.x, rz=p.z-I.c.z; let r=Math.hypot(rx,rz); if(r>I.R+1.5) return;
@@ -2874,16 +2886,16 @@ async function buildWorld(){
     // walking
     const ud=nurse.userData;
     if(ringT<1.2){ ringT+=dt; const q=Math.min(1,ringT/1.2); ring.scale.setScalar(.6+q*1.2); ring.material.opacity=.85*(1-q); }
-    if(walk){ const k=Math.min(1,(now-walk.s)/walk.d); const kk=walk.chain?k:Math.min(1,Math.max(0,(k<.15?k*k/.3:k>.85?1-(1-k)*(1-k)/.3:k-.075)/.925));
-      const x=walk.from.x+(walk.to.x-walk.from.x)*kk, z=walk.from.z+(walk.to.z-walk.from.z)*kk;
-      const dx=walk.to.x-walk.from.x, dz=walk.to.z-walk.from.z;
-      if(Math.hypot(dx,dz)>.1){ tmpQ.setFromAxisAngle(up,Math.atan2(dx,dz)); nurse.quaternion.slerp(tmpQ,Math.min(1,dt*10)); }
+    if(walk){ const W=walk, rem=W.total-W.s; W.v=Math.min(W.v+WALK_A*rdt, WALK_V, Math.sqrt(2*WALK_A*Math.max(rem,0))+.8); W.s=Math.min(W.total,W.s+W.v*rdt);
+      const cp=walkPoint(W,W.s); W.i=cp.i; const x=cp.x, z=cp.z; const la=walkPoint(W,W.s+1.4); const dx=la.x-x, dz=la.z-z; const k=W.s>=W.total-1e-4?1:0;
+      if(Math.hypot(dx,dz)>.05){ tmpQ.setFromAxisAngle(up,Math.atan2(dx,dz)); nurse.quaternion.slerp(tmpQ,Math.min(1,dt*9)); }
+      W.ph+=W.v*rdt*1.55; const amp=Math.min(1,W.v/3.5);
       nurse.position.set(x, nurse.position.y+(groundY(x,z)-nurse.position.y)*Math.min(1,dt*12), z);
       ud.cr=0; ud.head.rotation.x=0; ud.legs.forEach(l=>l.rotation.z=0);
       if(holdIV){ const kick=Math.max(0,Math.sin(tt*5)); ud.legs[0].rotation.x=0; ud.legs[1].rotation.x=kick*.9; ud.body.position.y=.05+kick*.05; ud.body.rotation.x=.14; }
-      else { ud.body.rotation.x=0; const ph=tt*14; ud.legs[0].rotation.x=Math.sin(ph)*.7; ud.legs[1].rotation.x=-Math.sin(ph)*.7; ud.body.position.y=Math.abs(Math.sin(ph))*.12;
-      ud.armR.sh.rotation.x=-.95+Math.sin(ph)*.12; ud.armL.sh.rotation.x=-.85-Math.sin(ph)*.12; }
-      if(k>=1){ const cb=walk.onArrive, ch=walk.chain; walk=null; if(!ch){ ud.legs.forEach(l=>l.rotation.x=0); ud.body.position.y=0; } cb&&cb(); if(!walk){ ud.legs.forEach(l=>l.rotation.x=0); ud.body.position.y=0; } }
+      else { ud.body.rotation.x=0; const ph=W.ph; ud.legs[0].rotation.x=Math.sin(ph)*.7*amp; ud.legs[1].rotation.x=-Math.sin(ph)*.7*amp; ud.body.position.y=Math.abs(Math.sin(ph))*.12*amp;
+      ud.armR.sh.rotation.x=-.95+Math.sin(ph)*.12*amp; ud.armL.sh.rotation.x=-.85-Math.sin(ph)*.12*amp; }
+      if(k>=1){ const cb=W.onArrive; walk=null; cb&&cb(); if(!walk){ ud.legs.forEach(l=>l.rotation.x=0); ud.body.position.y=0; } }
     } else {
       { const cr=inHut&&mode==="hut"; const kq=Math.min(1,dt*4); ud.cr=(ud.cr||0)+((cr?1:0)-(ud.cr||0))*kq; const c=ud.cr;   // 下雨:蹲在鍵盤架底下
         ud.body.position.y=-.55*c+Math.sin(tt*2.2)*.04*(1-c); ud.legs.forEach((l,i)=>{ l.rotation.x=-.95*c; l.rotation.z=(i?-1:1)*.28*c; });
@@ -2953,6 +2965,7 @@ async function buildWorld(){
     orHandoff:(cb)=>{ let a=false,b=false; const fin=()=>{ if(a&&b) cb&&cb(); };
       OR.handoff(()=>{ a=true; fin(); }); const dest=OR.toW(-13.4,3.2); faceCamera=false; route(pathTo(dest),()=>{ mode="idle"; faceCamera=true; b=true; fin(); });
       const tgt=OR.toW(-9,2); tgt.y=TOP; const pos=OR.toW(-6,24); pos.y=TOP+26; tweenCam(pos,tgt,1600); }, atOR:()=>viewIsl===3, inOR:()=>ISL[3].room.inside(nurse.position),
+    _walkP:()=>walk&&walk.P?walk.P.map(q=>[+q.x.toFixed(2),+q.z.toFixed(2)]):null,
     _exits:()=>ISL.map(I=>{ const O=outer(I); return O?[+O.a.toFixed(2),+O.rW.toFixed(1),O.I.i]:null; }), _br:()=>BRIDGES.map(b=>[b.a.x,b.a.z,b.b.x,b.b.z]), _off:()=>OFF&&{phase:OFF.phase,kind:OFF.kind}, _isl:()=>ISL.map(I=>[I.c.x,I.c.z,I.R]), _goIsl:(i)=>{ const I=ISL[i]; nurse.position.set(I.c.x+(I.ring?I.ring+2:PR+3),TOP,I.c.z); },
     _pet:(i)=>petTurtle(TURTLES.list[i||0].g), _turtles:()=>TURTLES.list, _snk:()=>snorkelFind(), _gull:()=>LIFE.gullNow(), _gulls:()=>LIFE.gulls, _fallen:()=>FALLEN, _bonus:()=>window.__coins(),
     _dropLitter:()=>{ const lit=mkLitter(0xE46F8E,false); lit.position.set(nurse.position.x+2,TOP+.3,nurse.position.z+1); lit.userData={v:new THREE.Vector3(),t:0,act:"pick",item:"垃圾",fallen:true,rest:true,age:20}; scene.add(lit); FALLEN.push(lit); return lit; },
