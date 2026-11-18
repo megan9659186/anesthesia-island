@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>麻醉又倒</title>
+<title>麻醉誘島</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,13 +11,13 @@
   <header>
     <div>
       <div class="eyebrow">Anesthesia Island · 麻醉科專科護理師甄審</div>
-      <h1>麻醉又倒</h1>
+      <h1>麻醉誘島</h1>
       <p class="lede">以吊橋相連的島嶼、二十八個街區:① 評估給藥島(術前評估、藥理、監測、麻醉機、擺位)、② 器官系統島(全身麻醉對各器官系統的影響:呼吸、心血管、神經、肝膽腸胃、腎臟)、③ 術後疼痛照護島、④ 模擬開刀房島、⑤ 專科照護島(產科、小兒與老年、內分泌與代謝)、⑥ 重症安全島(體液與輸血、重症與恢復室、麻醉安全)、⑦ 專科手術島(各專科手術的麻醉,依科別分書櫃:心臟血管外科、胸腔外科、神經外科、骨科、整形外科、一般外科與移植、泌尿科、眼科、耳鼻喉科、外傷急診、門診與手術室外)。同一主題的 Miller、Morgan 等不同來源內容整合成同一本書。在書裡練習考古題與 AI 猜題,答對累積金幣,可解鎖小麻的新技能。點一個街區,麻醉護理師小麻會走過去,書櫃會從地面慢慢升起;街區裡每個常考主題都是一本書,打開書就能讀依 Miller 整理的重點,書頁最上方是該主題的 109–115 年歷屆考古題與 AI 猜題。</p>
     </div>
     <div class="stats" id="stats"></div>
   </header>
 
-  <div class="ttl"><b>麻醉又倒</b><span>麻醉科專科護理師甄審</span><button type="button" id="aboutBtn" aria-label="說明" title="說明">ⓘ</button></div>
+  <div class="ttl"><b>麻醉誘島</b><span>麻醉科專科護理師甄審</span><button type="button" id="aboutBtn" aria-label="說明" title="說明">ⓘ</button></div>
   <div class="toolbar">
     <button class="wxtoggle menubtn" id="menuToggle" type="button" aria-expanded="true" aria-label="收合選單">✕ 收合</button>
     <div class="seg" role="group" aria-label="檢視方式">
@@ -41,10 +41,12 @@
       <span class="lbl">換個表情</span>
       <div class="faces"></div>
     </div>
+    <button class="wxtoggle" id="colToggle" type="button">📒 收集冊</button>
     <button class="wxtoggle" id="offToggle" type="button" aria-expanded="false">🏖️ 下班</button>
     <div class="wxbar closed offbar" id="offbar" role="group" aria-label="下班活動">
       <span class="lbl">下班囉!想做什麼?</span>
       <button type="button" class="offbtn" data-off="free">🏊 換泳裝去游泳</button>
+      <button type="button" class="offbtn" data-off="snorkel">🤿 換泳裝去浮潛</button>
       <button type="button" class="offbtn" data-off="swim">🐬 換泳裝騎海豚</button>
       <button type="button" class="offbtn" data-off="hawaii">🌺 夏威夷衫開帆船</button>
       <button type="button" class="offbtn" data-off="fish">🎣 去海邊釣魚</button>
@@ -56,7 +58,7 @@
   <div id="viewIsland">
     <div class="dbar" id="dbar" hidden></div>
     <div class="stage" id="stage">
-      <div class="loading" id="loading">麻醉又倒載入中⋯</div>
+      <div class="loading" id="loading">麻醉誘島載入中⋯</div>
       <div class="labels" id="labels"><div class="tip3" id="tip3" hidden></div></div>
       <button class="orstart" id="orStart" type="button">🏥 開始情境模擬</button>
       <aside class="orpanel" id="orPanel" hidden aria-live="polite"></aside>

@@ -1,4 +1,4 @@
-/* 麻醉又倒 3D:島嶼是 three.js 場景;點器官街區,麻醉護理師小人走過去,街區裡每個學習主題是一本書,點書打開閱讀。 */
+/* 麻醉誘島 3D:島嶼是 three.js 場景;點器官街區,麻醉護理師小人走過去,街區裡每個學習主題是一本書,點書打開閱讀。 */
 :root{
   color-scheme:light;
   --bg:#FFF8EF; --sea:#CBE9F4; --ink:#3B3347; --ink-2:#6A6078; --ink-3:#9A90A6; --line:#F0E2D3; --surface:#FFFFFF; --surface-2:#FFF6EC;
@@ -299,6 +299,24 @@ body.immersive .reset{bottom:max(14px,env(safe-area-inset-bottom,0px));right:max
 .about .box{background:#fff;border-radius:18px;max-width:560px;width:100%;max-height:86vh;overflow:auto;padding:18px 20px;position:relative}
 .about h2{font-family:var(--f-display);font-weight:400;color:var(--accent);font-size:30px;margin:0 0 6px}
 .about .x{position:absolute;right:12px;top:12px}
+.about .qr{display:flex;align-items:center;gap:14px;margin:12px 0;padding:12px;border-radius:14px;background:#F6F1EA}
+.about .qr img{flex:none;width:132px;height:132px;border-radius:8px;background:#fff}
+.about .qr b{display:block;font-size:15px;color:var(--ink)}
+.about .qr small{display:block;font-size:12.5px;color:var(--ink-3);margin:4px 0 6px}
+.about .qr a{font-size:12.5px;color:var(--accent);word-break:break-all}
+@media (max-width:420px){.about .qr{flex-direction:column;text-align:center}}
+/* 收集冊 */
+.colbook .box{max-width:720px}
+.colbook .colh{font-size:15px;margin:14px 0 6px;color:var(--ink)}
+.colbook .colh small{font-weight:400;color:var(--ink-3);margin-left:6px}
+.colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.colit{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:#F6F1EA;text-align:center;min-width:0}
+.colit .ic{font-size:26px;line-height:1.2}
+.colit b{font-size:12px;font-weight:600;color:var(--ink);word-break:break-word}
+.colit small{font-size:11px;color:var(--ink-3)}
+.colit.no{opacity:.5}
+.colit.r2:not(.no){background:#E8F3FB}
+.colit.r3:not(.no){background:#FFF1C9;box-shadow:inset 0 0 0 1.5px #F2C230}
 @media (max-width:700px){
   body.immersive .ttl span{display:none}
   body.immersive #viewIsland .dbar{top:auto;bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 46px);left:12px;right:12px;max-width:none}
