@@ -701,7 +701,7 @@ async function buildWorld(){
       const corr=tex(32,256,(c,w,h)=>{ for(let i=0;i<32;i++){ c.fillStyle=i%2?"#A9D6F2":"#5FA6D8"; c.fillRect(0,i*h/32,w,h/32+1); } }); corr.wrapS=corr.wrapT=THREE.RepeatWrapping; corr.repeat.set(1,10);
       // 接到麻醉機呼吸管路的 Y 型接頭(麻醉機區塊的 Y 接頭換算到手術室座標約在 (-5.7, 0.77, 5.69))
       { const Y=new THREE.Vector3(-1.6,.85,2.55).multiplyScalar(.9).applyAxisAngle(new THREE.Vector3(0,1,0),.45).add(new THREE.Vector3(-5.4,0,3.0));
-        tubeAlong([[-.3,4.02,1.8],[-.9,3.9,2.05],[-1.9,3.3,2.8],[-3.1,2.4,3.9],[(Y.x-3.1)/2-1.55,1.4,(Y.z+3.9)/2],[Y.x+.15,Y.y+.25,Y.z-.15],[Y.x,Y.y,Y.z]],.13,new THREE.MeshStandardMaterial({map:corr,roughness:.4,transparent:true,opacity:.9}),64); }
+        tubeAlong([[-.3,4.02,1.8],[-.9,3.9,2.05],[-1.9,3.3,2.8],[-3.1,2.4,3.9],[(Y.x-3.1)/2-1.55,1.4,(Y.z+3.9)/2],[Y.x+.15,Y.y+.25,Y.z-.15],[Y.x,Y.y,Y.z]],.09,new THREE.MeshStandardMaterial({map:corr,roughness:.4,transparent:true,opacity:.9}),64); }
       // CO₂ 取樣管(細透明管)從過濾器拉到麻醉機
       tubeAlong([[.2,3.7,1.7],[.3,3.9,1.8],[-1.0,4.1,2.2],[-2.2,3.4,2.9],[-3.4,2.9,3.2]],.02,clear,30);
       // BIS 導線
