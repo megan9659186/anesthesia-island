@@ -70,6 +70,7 @@ const COLLECT=[
   {c:"麻醉藥物",med:"drug",items:[["Propofol","🥛",1],["Etomidate","💉",2],["Ketamine","💉",2],["Midazolam","💉",1],["Dexmedetomidine","💉",2],["Remimazolam","💉",3],["Fentanyl","💉",1],["Morphine","💉",1],["Remifentanil","💉",2],["Meperidine","💉",2],["Sevoflurane","🟡",1],["Desflurane","🔵",2],["Isoflurane","🟣",2],["Rocuronium","💉",1],["Cisatracurium","💉",2],["Succinylcholine","💉",2],["Sugammadex","💉",2],["Neostigmine","💉",1],["Glycopyrrolate","💉",2],["Atropine","💉",1],["Lidocaine","💉",1],["Bupivacaine","💉",1],["Ropivacaine","💉",2],["Naloxone","💉",2],["Flumazenil","💉",2],["Dantrolene","🧪",3],["Ondansetron","💉",1],["Dexamethasone","💉",1],["Intralipid 20%","🥛",3]]},
   {c:"升壓與降壓藥",med:"vaso",items:[["Ephedrine","💉",1],["Phenylephrine","💉",1],["Epinephrine","💉",1],["Norepinephrine","💉",2],["Vasopressin","💉",2],["Dopamine","💉",2],["Dobutamine","💉",2],["Milrinone","💉",3],["Nitroglycerin","💉",2],["Labetalol","💉",1],["Esmolol","💉",2],["Nicardipine","💉",2],["Hydralazine","💉",2],["Nitroprusside","💉",3]]},
   {c:"呼吸道與管路",med:"line",items:[["Endo 3.0","🫁",2],["Endo 3.5","🫁",2],["Endo 4.0","🫁",2],["Endo 4.5","🫁",2],["Endo 5.0","🫁",2],["Endo 5.5","🫁",2],["Endo 6.0","🫁",1],["Endo 6.5","🫁",1],["Endo 7.0","🫁",1],["Endo 7.5","🫁",1],["Endo 8.0","🫁",1],["雙腔管 DLT","🫁",3],["LMA","🫁",1],["FloTrac","📈",2],["Trachway","📹",2],["喉頭鏡","🔦",1],["影像喉頭鏡","📹",2],["Bougie","🪄",2],["A-line","🩸",1],["CVC","🩺",2],["PICC","🩺",2],["IV 18G","💧",1],["IV 20G","💧",1],["IV 22G","💧",1],["Foley","💧",1]]},
+  {c:"監測與保溫備品",med:"line",items:[["BIS","🧠",2],["NMT","⚡",2],["溫毯被","🛏️",1]]},
   {c:"血品",med:"blood",items:[["PRBC","🩸",1],["FFP","🟨",1],["Platelet","🟡",2],["Cryoprecipitate","🧊",3],["Albumin","🥛",2]]},
   {c:"手術室夥伴與設備",med:"card",items:[["麻醉主治醫師","👨‍⚕️",3],["麻醉巡迴員","👩‍⚕️",3],["CRNA 學姊","👩‍⚕️",2],["外科醫師","🧑‍⚕️",2],["刷手護理師","🧑‍⚕️",2],["升降椅","🪑",2],["點滴架","🩺",1],["電擊器","⚡",3]]}];
 const COL_BY={}; COLLECT.forEach(g=>g.items.forEach(([n,ic,r])=>COL_BY[n]={n,ic,r,c:g.c,med:g.med}));
@@ -92,7 +93,15 @@ const COIN=new Set(); try{ JSON.parse(localStorage.getItem("island-coins")||"[]"
 done.forEach(r=>COIN.add("q:"+r));
 let BONUS=0; try{ BONUS=parseFloat(localStorage.getItem("island-bonus")||"0")||0; }catch(e){}   // 零錢:埋藏金幣與浮潛金幣 +0.1、撿垃圾 +0.2、垃圾被海鷗或海龜吃掉 −0.2
 const coins=()=>Math.round((COIN.size*10+BONUS)*10)/10;
-let TESTMODE=true; try{ const t=localStorage.getItem("island-test"); if(t!==null) TESTMODE=t==="1"; }catch(e){}
+/* 測試模式只給網站管理者:用專屬連結 ?dev=<金鑰> 開一次,這台瀏覽器就會記住(?dev=off 關閉)。程式裡只存金鑰的 SHA-256。 */
+const DEV_HASH="21ca072b3d9c2dacf458252bf70c1a9e0dc42554c1911f7fbf6cf15874165c54";
+let DEV=false; try{ DEV=localStorage.getItem("island-dev")==="1"; }catch(e){}
+let TESTMODE=false; try{ if(DEV) TESTMODE=localStorage.getItem("island-test")!=="0"; }catch(e){}
+{ const q=new URLSearchParams(location.search), key=q.get("dev");
+  if(key!==null){ const clean=()=>{ q.delete("dev"); try{ history.replaceState(null,"",location.pathname+(q.toString()?"?"+q:"")+location.hash); }catch(e){} };
+    if(key==="off"){ DEV=false; TESTMODE=false; try{ localStorage.removeItem("island-dev"); localStorage.removeItem("island-test"); }catch(e){} clean(); }
+    else if(window.crypto&&crypto.subtle) crypto.subtle.digest("SHA-256",new TextEncoder().encode(key)).then(buf=>{ const hex=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join(""); clean();
+      if(hex===DEV_HASH){ DEV=true; TESTMODE=true; try{ localStorage.setItem("island-dev","1"); localStorage.removeItem("island-test"); }catch(e){} renderSkills(); toast("🧪 已開啟管理者測試模式(只在這台瀏覽器)"); } }); } }
 function hasSkill(id){ if(TESTMODE) return true; const k=SKILLS.find(x=>x.id===id); return !k||coins()>=k.cost; }
 function toast(html,cls){ let box=document.querySelector(".toasts"); if(!box){ box=document.createElement("div"); box.className="toasts"; document.body.appendChild(box); }
   const t=document.createElement("div"); t.className="toast "+(cls||""); t.innerHTML=html; box.appendChild(t); setTimeout(()=>{ t.style.transition="opacity .4s"; t.style.opacity=0; setTimeout(()=>t.remove(),450); },Math.max(cls==="unlock"?5500:4200, (t.textContent||"").length*140)); }
@@ -110,10 +119,10 @@ function aiAnswer(key,k){ const [sid,i]=key.split(":"); const q=sysById[sid]&&sy
 function renderSkills(){ const n=coins(); $("coinToggle").innerHTML=`<i class="gc" aria-hidden="true"></i> ${n}`; const next=SKILLS.find(k=>k.cost>n); const prev=[...SKILLS].reverse().find(k=>k.cost<=n);
   const p=next?Math.round((n-(prev?prev.cost:0))/(next.cost-(prev?prev.cost:0))*100):100;
   $("skillbar").innerHTML=`<div class="sk-head"><b><i class="gc" aria-hidden="true"></i> ${n} 金幣</b><div class="sk-bar"><i style="width:${p}%"></i></div><small>${next?`再 ${next.cost-n} 金幣解鎖 ${next.ic} ${next.name}`:"全部技能都解鎖了!"}<br>書裡的歷屆考古題和 AI 猜題,每答對一題 +10 金幣(每題只算一次)</small></div>`+
-    `<label class="sk-test"><input type="checkbox" id="testMode"${TESTMODE?" checked":""}> 🧪 測試模式(全部技能先解鎖)</label>`+
+    (DEV?`<label class="sk-test"><input type="checkbox" id="testMode"${TESTMODE?" checked":""}> 🧪 測試模式(全部技能先解鎖,只有管理者看得到)</label>`:"")+
     SKILLS.map(k=>{ const ok=TESTMODE||n>=k.cost; return `<button type="button" class="sk${ok?"":" lock"}" data-sk="${k.id}"${ok?"":" aria-disabled=\"true\""}><span class="ic">${ok?k.ic:"🔒"}</span><span><b>${k.name}</b><small>${k.desc}</small></span><span class="tag">${ok?"使用":`${k.cost} <i class="gc" aria-hidden="true"></i>`}</span></button>`; }).join(""); }
 renderSkills(); window.__coins=coins;
-$("skillbar").addEventListener("change",e=>{ if(e.target.id!=="testMode") return; TESTMODE=e.target.checked; try{ localStorage.setItem("island-test",TESTMODE?"1":"0"); }catch(x){} renderSkills(); toast(TESTMODE?"🧪 測試模式開啟:全部技能可用":"測試模式關閉:技能依金幣解鎖"); }); window.__aiA=(key)=>{ const [sid,i]=key.split(":"); return sysById[sid].aiq[+i].a; };
+$("skillbar").addEventListener("change",e=>{ if(e.target.id!=="testMode"||!DEV) return; TESTMODE=e.target.checked; try{ localStorage.setItem("island-test",TESTMODE?"1":"0"); }catch(x){} renderSkills(); toast(TESTMODE?"🧪 測試模式開啟:全部技能可用":"測試模式關閉:技能依金幣解鎖"); }); window.__aiA=(key)=>{ const [sid,i]=key.split(":"); return sysById[sid].aiq[+i].a; };
 $("skillbar").addEventListener("click",e=>{ const b=e.target.closest("[data-sk]"); if(!b) return; const id=b.dataset.sk; if(!hasSkill(id)){ lockMsg(id); return; } const w=window.__world; if(!w) return;
   $("skillbar").classList.add("closed"); $("coinToggle").setAttribute("aria-expanded",false);
   if(id==="stool") w.goStool(); else if(id==="iv") w.goIV(); else if(id==="face") $("faceToggle").click(); else if(id==="swim"||id==="sail"||id==="freeswim") w.offStart(id==="swim"?"swim":id==="sail"?"hawaii":"free"); else if(id==="dance") w.dance(); else if(id==="fish") w.fishStart(); else if(id==="gold") w.toggleGold(); });
@@ -934,8 +943,8 @@ async function buildWorld(){
   } }
   /* clouds */
   const clouds=[]; const cm=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:.92});
-  for(let i=0;i<10;i++){ const cg=new THREE.Group(); [[0,0,0,2.2],[2,-.3,.4,1.6],[-2,-.3,-.2,1.7],[.8,.8,-.3,1.5]].forEach(([x,y,z,r])=>{ const sp=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),cm); sp.position.set(x,y,z); cg.add(sp); });
-    const a=i/10*Math.PI*2+.3; const sc=2.2+rand()*2; cg.scale.setScalar(sc); cg.position.set(Math.cos(a)*130,30+rand()*16,Math.sin(a)*130); cg.userData.a=a; cg.userData.r=110+rand()*70; cg.userData.k=i; scene.add(cg); clouds.push(cg); }
+  for(let i=0;i<10;i++){ const cg=new THREE.Group(), mat=cm.clone(); [[0,0,0,2.2],[2,-.3,.4,1.6],[-2,-.3,-.2,1.7],[.8,.8,-.3,1.5]].forEach(([x,y,z,r])=>{ const sp=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),mat); sp.position.set(x,y,z); cg.add(sp); });
+    const a=i/10*Math.PI*2+.3; const sc=2.2+rand()*2; cg.scale.setScalar(sc); cg.userData.mat=mat; cg.userData.rad=sc*4.2; cg.userData.f=1; cg.position.set(Math.cos(a)*130,30+rand()*16,Math.sin(a)*130); cg.userData.a=a; cg.userData.r=110+rand()*70; cg.userData.k=i; scene.add(cg); clouds.push(cg); }
   const ENV=buildEnvironment(); 
 
 
@@ -992,7 +1001,7 @@ async function buildWorld(){
     };
     const NIGHT={top:0x0A1430,bot:0x23345A,fog:0x1A2744,sea:0x123A58,cloud:0x4A5570};
     let state={time:"day",wx:"clear"};
-    try{ const sv=JSON.parse(localStorage.getItem("island-wx")||"null"); if(sv&&P[sv.wx]) state=sv; }catch(e){}
+    try{ const sv=JSON.parse(localStorage.getItem("island-wx")||"null"); if(sv&&sv.wx==="downpour") sv.wx="drizzle"; if(sv&&P[sv.wx]) state=sv; }catch(e){}   // 傾盆大雨已移除,舊設定改成毛毛雨
     const cur={}, tgt={};
     const C=["top","bot","fog","cloud","sea"];
     function target(){ const p=P[state.wx], n=state.time==="night";
@@ -1035,8 +1044,14 @@ async function buildWorld(){
       seaU.uSun.value.set(sx,sy,sz).normalize(); seaU.uSunI.value=Math.max(cur.sunV,cur.moonV*.35)*(1-flash)+flash*.4; seaU.uSunC.value.set(cur.night>.5?0xCFE0FF:0xFFF1D0);
       api.foam=1-Math.min(.6,cur.night*.5); api.A=A;
       // clouds
-      clouds.forEach(c=>{ c.visible=c.userData.k<Math.round(cur.cN); c.userData.a+=dt*cur.cSp; c.position.x=Math.cos(c.userData.a)*c.userData.r; c.position.z=Math.sin(c.userData.a)*c.userData.r; });
-      cm.color.copy(cur.cloud); cm.opacity=cur.cOp;
+      // 雲擋在鏡頭與看的地方之間(或太靠近鏡頭)時,慢慢變透明,不擋視線
+      { const cp=camera.position, tg=controls.target, sx=tg.x-cp.x, sy=tg.y-cp.y, sz=tg.z-cp.z, L2=sx*sx+sy*sy+sz*sz||1;
+        clouds.forEach(c=>{ const u=c.userData; c.visible=u.k<Math.round(cur.cN); u.a+=dt*cur.cSp; c.position.x=Math.cos(u.a)*u.r; c.position.z=Math.sin(u.a)*u.r;
+          const px=c.position.x-cp.x, py=c.position.y-cp.y, pz=c.position.z-cp.z; const t=Math.max(0,Math.min(1,(px*sx+py*sy+pz*sz)/L2)); const d=Math.hypot(px-sx*t,py-sy*t,pz-sz*t);
+          let block=(t>0&&t<1&&d<u.rad)||Math.hypot(px,py,pz)<u.rad+12;
+          // 也不能擋在鏡頭和任何一座島之間
+          if(!block) for(const I of ISL){ const ix=I.c.x-cp.x, iy=TOP-cp.y, iz=I.c.z-cp.z, l2=ix*ix+iy*iy+iz*iz||1; const ti=(px*ix+py*iy+pz*iz)/l2; if(ti<=0||ti>=1) continue; const di=Math.hypot(px-ix*ti,py-iy*ti,pz-iz*ti); if(di<u.rad+I.R*.7*ti){ block=true; break; } } u.f+=((block?0:1)-u.f)*Math.min(1,dt*3);
+          u.mat.color.copy(cur.cloud); u.mat.opacity=cur.cOp*u.f; u.mat.depthWrite=u.f>.97; c.visible=c.visible&&u.f>.02; }); }
       // rain
       const n=Math.round(cur.rain); rg.setDrawRange(0,n*2); rain.material.opacity=cur.rOp*(1-cur.night*.35); rain.position.set(controls.target.x,0,controls.target.z);
       if(n>0){ const a=rg.attributes.position.array; const v=cur.rSp*dt, sl=cur.rSl, L=cur.rLen;
