@@ -93,14 +93,14 @@ const COIN=new Set(); try{ JSON.parse(localStorage.getItem("island-coins")||"[]"
 done.forEach(r=>COIN.add("q:"+r));
 let BONUS=0; try{ BONUS=parseFloat(localStorage.getItem("island-bonus")||"0")||0; }catch(e){}   // 零錢:埋藏金幣與浮潛金幣 +0.1、撿垃圾 +0.2、垃圾被海鷗或海龜吃掉 −0.2
 const coins=()=>Math.round((COIN.size*10+BONUS)*10)/10;
-/* 測試模式只給網站管理者:用專屬連結 ?dev=<金鑰> 開一次,這台瀏覽器就會記住(?dev=off 關閉)。程式裡只存金鑰的 SHA-256。 */
-const DEV_HASH="21ca072b3d9c2dacf458252bf70c1a9e0dc42554c1911f7fbf6cf15874165c54";
-let DEV=false; try{ DEV=localStorage.getItem("island-dev")==="1"; }catch(e){}
+/* 測試模式只給網站管理者:用專屬網址 /anesthesia-island/<金鑰>(或 ?dev=<金鑰>)開一次,這台瀏覽器就會記住(?dev=off 關閉)。程式裡只存金鑰的 SHA-256。 */
+const DEV_HASH="574cbccffe2edf1a9c544ade3f8e123a8fffb1b2afff7104c0e20a123d60a981";   // 也可以打開 /anesthesia-island/<鑰匙>(由 404.html 處理)
+let DEV=false; try{ DEV=localStorage.getItem("island-dev")==="1"; if(DEV&&localStorage.getItem("island-dev-new")==="1"){ localStorage.removeItem("island-dev-new"); setTimeout(()=>toast("🧪 已開啟管理者測試模式(只在這台瀏覽器)"),1500); } }catch(e){}
 let TESTMODE=false; try{ if(DEV) TESTMODE=localStorage.getItem("island-test")!=="0"; }catch(e){}
 { const q=new URLSearchParams(location.search), key=q.get("dev");
   if(key!==null){ const clean=()=>{ q.delete("dev"); try{ history.replaceState(null,"",location.pathname+(q.toString()?"?"+q:"")+location.hash); }catch(e){} };
     if(key==="off"){ DEV=false; TESTMODE=false; try{ localStorage.removeItem("island-dev"); localStorage.removeItem("island-test"); }catch(e){} clean(); }
-    else if(window.crypto&&crypto.subtle) crypto.subtle.digest("SHA-256",new TextEncoder().encode(key)).then(buf=>{ const hex=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join(""); clean();
+    else if(window.crypto&&crypto.subtle) crypto.subtle.digest("SHA-256",new TextEncoder().encode(key.trim().toLowerCase())).then(buf=>{ const hex=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join(""); clean();
       if(hex===DEV_HASH){ DEV=true; TESTMODE=true; try{ localStorage.setItem("island-dev","1"); localStorage.removeItem("island-test"); }catch(e){} renderSkills(); toast("🧪 已開啟管理者測試模式(只在這台瀏覽器)"); } }); } }
 function hasSkill(id){ if(TESTMODE) return true; const k=SKILLS.find(x=>x.id===id); return !k||coins()>=k.cost; }
 function toast(html,cls){ let box=document.querySelector(".toasts"); if(!box){ box=document.createElement("div"); box.className="toasts"; document.body.appendChild(box); }

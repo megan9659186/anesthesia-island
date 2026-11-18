@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>麻醉誘島 · 找不到頁面</title>
+<style>
+  :root{--bg:#FFF8EF;--ink:#3B3347;--ink-3:#9A90A6;--accent:#E46F8E}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;padding:16px;box-sizing:border-box}
+  .box{max-width:420px;text-align:center}
+  h1{color:var(--accent);font-weight:500;font-size:28px;margin:0 0 8px}
+  p{color:var(--ink-3);margin:0 0 18px;line-height:1.6}
+  a{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;padding:10px 20px;border-radius:999px}
+  .box[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="box" id="nf" hidden>
+  <h1>🏝️ 找不到這個頁面</h1>
+  <p>這個網址不存在,可能是打錯了。</p>
+  <a id="home" href="./">回到麻醉誘島</a>
+</div>
+<script>
+// 管理者的測試模式鑰匙:打開 /anesthesia-island/<鑰匙> 時,在這個瀏覽器開啟測試模式並跳回島上。
+// 這裡只存鑰匙的 SHA-256,不存鑰匙本身。
+(function(){
+  var DEV_HASH="574cbccffe2edf1a9c544ade3f8e123a8fffb1b2afff7104c0e20a123d60a981";
+  var parts=location.pathname.split("/").filter(Boolean);
+  var home="/"+(parts.length>1?parts[0]+"/":"");
+  document.getElementById("home").href=home;
+  var key=decodeURIComponent(parts[parts.length-1]||"").trim().toLowerCase();
+  var show=function(){ document.getElementById("nf").hidden=false; };
+  if(!key||!(window.crypto&&crypto.subtle)){ show(); return; }
+  crypto.subtle.digest("SHA-256",new TextEncoder().encode(key)).then(function(buf){
+    var hex=Array.prototype.map.call(new Uint8Array(buf),function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+    if(hex===DEV_HASH){ try{ localStorage.setItem("island-dev","1"); localStorage.removeItem("island-test"); localStorage.setItem("island-dev-new","1"); }catch(e){} location.replace(home); }
+    else show();
+  },show);
+})();
+</script>
+</body>
+</html>
