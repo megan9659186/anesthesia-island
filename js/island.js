@@ -335,6 +335,32 @@ $("aboutBtn").onclick=()=>{ const m=document.createElement("div"); m.className="
     <p class="meta">拖曳可旋轉視角,滾輪或雙指可縮放。</p><p class="meta">${document.querySelector("footer").innerHTML}</p></div>`;
   const close=()=>m.remove(); m.onclick=e=>{ if(e.target===m) close(); }; m.querySelector(".x").onclick=close; document.body.appendChild(m); };
 
+/* ---------- 入口畫面:幫小麻取名字、選身份(SNA 學員 / CRNA) ----------
+   存在 localStorage:island-name(名字)、island-role("SNA" 或 "CRNA")。每次打開網站都會先出現,帶入上次填的內容。 */
+const PLAYER={ name:(()=>{ try{ return localStorage.getItem("island-name")||""; }catch(e){ return ""; } })(), role:(()=>{ try{ return localStorage.getItem("island-role")==="SNA"?"SNA":"CRNA"; }catch(e){ return "CRNA"; } })() };
+const esc=(t)=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function drawBadge(g,w,h){ const sna=PLAYER.role==="SNA"; g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.fillStyle=sna?"#3C9AD6":"#E46F8E"; g.fillRect(0,0,w,40);
+  g.textAlign="center"; g.textBaseline="middle"; if(PLAYER.name){ g.fillStyle="#fff"; let s=30; do{ g.font=`700 ${s}px "Noto Sans TC",sans-serif`; s--; }while(g.measureText(PLAYER.name).width>w-16&&s>12); g.fillText(PLAYER.name,w/2,21); }
+  g.fillStyle="#3B3347"; g.font='700 56px "Noto Sans TC",sans-serif'; g.fillText(PLAYER.role,w/2,98); }
+function playerChip(){ const t=document.querySelector(".ttl"); if(!t) return; let c=$("meChip"); if(!c){ c=document.createElement("button"); c.type="button"; c.id="meChip"; c.className="mechip"; c.title="修改名字與身份"; c.onclick=()=>openIntro(true); t.appendChild(c); }
+  c.innerHTML=`<i class="${PLAYER.role==="SNA"?"sna":"crna"}">${PLAYER.role}</i>${esc(PLAYER.name||"小麻")}`; }
+function openIntro(edit){ const m=document.createElement("div"); m.className="intro";
+  m.innerHTML=`<form class="ibox" role="dialog" aria-modal="true" aria-label="進入麻醉誘島">
+    <div class="eyebrow">Anesthesia Island</div><h2>麻醉誘島</h2><p class="meta">歡迎上島!先幫你的麻醉護理師小人取個名字,再選你的身份。</p>
+    <label class="ilab" for="inName">小麻的名字</label><input id="inName" maxlength="10" autocomplete="nickname" placeholder="例如:小麻" value="${esc(PLAYER.name)}">
+    <span class="ilab">身份</span>
+    <div class="roles" role="radiogroup" aria-label="身份">
+      <button type="button" role="radio" data-r="SNA" aria-checked="${PLAYER.role==="SNA"}"><b>SNA</b><small>麻醉專科護理師學員</small></button>
+      <button type="button" role="radio" data-r="CRNA" aria-checked="${PLAYER.role!=="SNA"}"><b>CRNA</b><small>麻醉專科護理師</small></button></div>
+    <button class="go" type="submit">${edit?"儲存":"進入島嶼"}</button></form>`;
+  let role=PLAYER.role; m.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ role=b.dataset.r; m.querySelectorAll("[data-r]").forEach(x=>x.setAttribute("aria-checked",x===b)); });
+  m.querySelector("form").onsubmit=e=>{ e.preventDefault(); PLAYER.name=m.querySelector("#inName").value.trim().slice(0,10); PLAYER.role=role;
+    try{ localStorage.setItem("island-name",PLAYER.name); localStorage.setItem("island-role",role); }catch(err){}
+    m.remove(); playerChip(); if(window.__world&&window.__world.setBadge) window.__world.setBadge(); };
+  if(edit) m.onclick=e=>{ if(e.target===m) m.remove(); };
+  document.body.appendChild(m); setTimeout(()=>{ const i=m.querySelector("#inName"); if(i&&!PLAYER.name) i.focus(); },50); }
+playerChip(); openIntro(false);
+
 /* ---------- question modal ---------- */
 function openQ(r,list){
   const q=QB[r]; if(!q) return; const i=refInfo(r); const LAB="ABCD";
@@ -654,9 +680,15 @@ async function buildWorld(){
     // 牆面:淡綠色;後牆與兩側牆加高,嵌著不鏽鋼框的玻璃櫃(門口那面維持矮牆,才看得到房間裡面)
     const wallM=M(0xDCE6D2,{roughness:.75}), trimM=M(0xC4CCD2,{roughness:.35,metalness:.5});
     const wall=(w,d,x,z,hh=WH)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,hh,d),wallM); m.position.set(x,hh/2,z); g.add(m); const t=new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04),trimM); t.position.set(x,hh+.06,z); g.add(t); };
-    const WT=3.1; wall(W,.3,0,-D/2,WT); wall(.3,D,-W/2,0,WT); wall(.3,D,W/2,0,WT); const dw=4.2; wall((W-dw)/2,.3,-(W+dw)/4,D/2); wall((W-dw)/2,.3,(W+dw)/4,D/2);
+    const WT=3.1; wall(W,.3,0,-D/2,WT); wall(.3,D,-W/2,0,WT); wall(W,.3,0,D/2);
+    // 出入口在右牆靠後面的角落:門洞 DZ0~DZ1,門框與拉開的自動門
+    const DZ0=-7.7, DZ1=-3.5, DZC=(DZ0+DZ1)/2; wall(.3,DZ0+D/2,W/2,(-D/2+DZ0)/2,WT); wall(.3,D/2-DZ1,W/2,(DZ1+D/2)/2,WT);
+    { const fm=M(0xC4CCD2,{roughness:.35,metalness:.5}); for(const z of [DZ0,DZ1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(.45,WT,.18),fm); p.position.set(W/2,WT/2,z); g.add(p); }
+      const lt=new THREE.Mesh(new THREE.BoxGeometry(.45,.3,DZ1-DZ0+.18),fm); lt.position.set(W/2,WT+.05,DZC); g.add(lt);
+      const dp=new THREE.Mesh(new THREE.BoxGeometry(.12,WT-.1,DZ1-DZ0),M(0xDCE2E6,{roughness:.4,metalness:.3})); dp.position.set(W/2+.32,(WT-.1)/2,DZ1+(DZ1-DZ0)/2+.1); g.add(dp);
+      const win=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.9),new THREE.MeshStandardMaterial({color:0x9CC7D8,roughness:.1,metalness:.2})); win.rotation.y=Math.PI/2; win.position.set(W/2+.39,2.0,dp.position.z); g.add(win); }
     const doorSign=new THREE.Mesh(new THREE.PlaneGeometry(3.2,.8),new THREE.MeshBasicMaterial({map:tex(320,80,(c,w,h)=>{ c.fillStyle="#2E7D6E"; c.fillRect(0,0,w,h); c.fillStyle="#fff"; c.font='400 40px "Huninn","Noto Sans TC"'; c.textAlign="center"; c.textBaseline="middle"; c.fillText("手術室 OR 1",w/2,h/2+2); })}));
-    doorSign.rotation.x=-Math.PI/2; doorSign.position.set(0,.14,D/2-1.0); g.add(doorSign);
+    doorSign.rotation.set(-Math.PI/2,0,Math.PI/2); doorSign.position.set(W/2-1.0,.14,DZC); g.add(doorSign);
     // OR table
     const steel=M(0xCDD3D8,{roughness:.3,metalness:.6}), dark=M(0x3A414A,{roughness:.5});
     // 手術台照真實的電動手術台:藍色底座外殼、不鏽鋼立柱、黑色台框上鋪寶藍色台墊,兩側有側軌
@@ -762,8 +794,8 @@ async function buildWorld(){
         [-.2,-D/2+.5,0,eqTex],
         [3.5,-D/2+.5,0,binCab([["Endo 管","Stylet"],["Airway","牙墊"],["抽痰管","密閉式抽痰管"]])],
         [7.2,-D/2+.5,0,cleanTex],
-        [W/2-.5,-3.2,-Math.PI/2,binCab([["縫線","紗布"],["沖洗棉棒","紗繃"],["宜拉膠","3M 膠帶"]])],
-        [W/2-.5,.6,-Math.PI/2,binCab([["Foley","尿袋"],["電燒貼片","止血帶"],["約束帶","沙袋"]])],
+        [W/2-.5,-1.4,-Math.PI/2,binCab([["縫線","紗布"],["沖洗棉棒","紗繃"],["宜拉膠","3M 膠帶"]])],
+        [W/2-.5,2.4,-Math.PI/2,binCab([["Foley","尿袋"],["電燒貼片","止血帶"],["約束帶","沙袋"]])],
         [-W/2+.5,-5.6,Math.PI/2,binCab([["Ringer","N.S"],["D5W","Voluven"],["加壓袋","輸血 set"]])],
         [-W/2+.5,-2.0,Math.PI/2,binCab([["3-way","T-connect"],["IV 延長線","Pump bag"],["Nasal airway","Oral airway"]])]];
       for(const [x,z,ry,t] of CABS){ const cg=new THREE.Group(); cg.position.set(x,0,z); cg.rotation.y=ry; g.add(cg);
@@ -796,8 +828,8 @@ async function buildWorld(){
         [[0x2FA84F,-.2],[0xF2C318,0],[0x3C78D8,.2]].forEach(([col,o])=>{ const s0=new THREE.Vector3(o,3.6,.42).applyMatrix4(pg.matrix), s1=new THREE.Vector3(am.x+o*.3,2.4,am.z+.1);
           const h=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([s0,s0.clone().add(new THREE.Vector3(0,-1.3,0)),new THREE.Vector3((s0.x+s1.x)/2,1.0,(s0.z+s1.z)/2),s1]),24,.04,6,false),M(col,{roughness:.5})); g.add(h); }); }
       // 麻醉推車(照片):灰褐色抽屜櫃配湖水綠飾條、上層湖水綠托盤、U 型把手架與分格收納盒、側掛黃色針頭收集盒與藍蓋桶、左側收納籃
-      // 推車放在麻醉護理師站位(床頭)的左後方、伸手就拿得到,抽屜正面朝向站位
-      { const cg=new THREE.Group(); cg.position.set(-3.2,0,6.4); cg.rotation.y=Math.atan2(-1.7+3.2,4.4-6.4); g.add(cg);
+      // 推車放在麻醉機旁的角落,抽屜正面朝向麻醉護理師站位
+      { const cg=new THREE.Group(); cg.position.set(-8.7,0,7.3); cg.rotation.y=Math.atan2(-1.7+8.7,4.4-7.3); g.add(cg);
         const taupe=M(0x9E968D,{roughness:.6}), teal=M(0x7ED4CC,{roughness:.5}), frameM=M(0xCFC7BC,{roughness:.5});
         const body=new THREE.Mesh(new RoundedBoxGeometry(1.7,2.0,1.15,2,.06),taupe); body.position.y=1.25; cg.add(body);
         const ft=tex(340,400,(c,w,h)=>{ c.fillStyle="#A59D93"; c.fillRect(0,0,w,h); const H=[54,54,54,40,56,40,56,46]; let y=0; const labs={3:"Endo/輸血set/3way lock/T-connect/IV延長線/Nasal airway",5:"紗繃、宜拉膠、3M膠帶 / pump bag / 延長線"};
@@ -820,7 +852,7 @@ async function buildWorld(){
         const sb2=new THREE.Mesh(new THREE.BoxGeometry(.42,.4,.45),M(0xA9E3DD)); sb2.position.set(-1.1,2.05,.2); cg.add(sb2);
         for(const [x,z] of [[-.7,-.45],[.7,-.45],[-.7,.45],[.7,.45]]){ const wh=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.1,12),M(0x9AA0A6)); wh.rotation.z=Math.PI/2; wh.position.set(x,.15,z); cg.add(wh); } }
       // 電燒主機推車(兩台藍色機器疊在不鏽鋼推車上)
-      { const eg=new THREE.Group(); eg.position.set(8.5,0,-5.9); eg.rotation.y=-Math.PI/2; g.add(eg);
+      { const eg=new THREE.Group(); eg.position.set(8.6,0,5.8); eg.rotation.y=-Math.PI/2; g.add(eg);
         for(const y of [.4,1.4,2.3]){ const sh=new THREE.Mesh(new THREE.BoxGeometry(1.3,.06,1.0),ss); sh.position.y=y; eg.add(sh); }
         for(const [x,z] of [[-.6,-.45],[.6,-.45],[-.6,.45],[.6,.45]]){ const l=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,2.3,6),ss); l.position.set(x,1.2,z); eg.add(l); }
         const u1=new THREE.Mesh(new RoundedBoxGeometry(1.1,.5,.8,2,.05),M(0x4C88C8,{roughness:.4})); u1.position.y=1.7; eg.add(u1);
@@ -828,7 +860,7 @@ async function buildWorld(){
         const u3=new THREE.Mesh(new RoundedBoxGeometry(1.1,.45,.8,2,.05),M(0x3B6FAE,{roughness:.4})); u3.position.y=.68; eg.add(u3);
         const dsp=new THREE.Mesh(new THREE.PlaneGeometry(.4,.2),new THREE.MeshBasicMaterial({color:0x7FE0A0})); dsp.position.set(-.2,1.75,.41); eg.add(dsp); }
       // 點滴架(掛兩袋輸液)、紅色踢桶套粉紅色垃圾袋、綠色踏階兩個
-      { const ip=new THREE.Group(); ip.position.set(3.6,0,6.4); g.add(ip);
+      { const ip=new THREE.Group(); ip.position.set(4.6,0,7.6); g.add(ip);
         for(let i=0;i<5;i++){ const a=i/5*Math.PI*2, lg=new THREE.Mesh(new THREE.BoxGeometry(.7,.06,.08),M(0x2A3038)); lg.position.set(Math.cos(a)*.35,.12,Math.sin(a)*.35); lg.rotation.y=-a; ip.add(lg); }
         const po=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,4.4,8),ss); po.position.y=2.3; ip.add(po);
         const hk=new THREE.Mesh(new THREE.BoxGeometry(.9,.04,.04),ss); hk.position.y=4.45; ip.add(hk);
@@ -869,7 +901,7 @@ async function buildWorld(){
     shadowy(g);
     const toW=(x,z)=>{ const v=new THREE.Vector3(x,0,z).applyAxisAngle(up0,yaw).add(new THREE.Vector3(I.c.x,0,I.c.z)); return v; };
     const loc=(x,z)=>{ const v=new THREE.Vector3(x-I.c.x,0,z-I.c.z).applyAxisAngle(up0,-yaw); return v; };
-    const room={ yaw, station:toW(-1.7,4.4), stationYaw:yaw+Math.PI, doorIn:toW(0,D/2-1.4), doorOut:toW(0,D/2+1.4),
+    const room={ yaw, station:toW(-1.7,4.4), stationYaw:yaw+Math.PI, doorIn:toW(W/2-1.4,DZC), doorOut:toW(W/2+1.6,DZC), via:toW(5.0,6.2),
       inside:(p)=>{ const l=loc(p.x,p.z); return Math.abs(l.x)<W/2-.2 && Math.abs(l.z)<D/2-.2; }, near:(x,z)=>{ const l=loc(x,z); return (Math.abs(l.x)<W/2+1.5 && Math.abs(l.z)<D/2+1.5) || (l.x>-22 && l.x<-10 && l.z>-7 && l.z<13); } };
     // 兩個點都在手術室外面、但直線會穿過手術室時:沿牆外側繞過轉角(不穿牆)
     room.around=(p,q)=>{ const bx=W/2+.5, bz=D/2+.5, hx=W/2+1.3, hz=D/2+1.3; const L=(v)=>{ const l=loc(v.x,v.z); return [l.x,l.z]; };
@@ -879,6 +911,7 @@ async function buildWorld(){
       for(let i=0;i<4;i++) for(const dir of [1,-1]) for(let n=1;n<=3;n++){ const seq=[]; for(let k=0;k<n;k++) seq.push(C[(i+dir*k+8)%4]); const pts=[A,...seq,B]; let ok=true, len=0;
         for(let k=0;k<pts.length-1;k++){ if(hit(pts[k],pts[k+1])){ ok=false; break; } len+=Math.hypot(pts[k+1][0]-pts[k][0],pts[k+1][1]-pts[k][1]); } if(ok&&len<bl){ bl=len; best=seq; } }
       return best?best.map(c=>toW(c[0],c[1])):[]; };
+    room.viaFor=(p)=>{ const l=loc(p.x,p.z); return l.x<3.5&&l.z>-2; };   // 從門口走到床頭(麻醉站位)時,先沿右牆走到床頭那側,不穿過外科團隊
     I.room=room;
     // live state pushed from the scenario panel
     const st={hr:72,sbp:118,dbp:72,spo2:99,etco2:35,rr:12,temp:36.5,skin:"normal",alarm:false,shake:false,rhythm:"sinus"};
@@ -923,10 +956,10 @@ async function buildWorld(){
       bed.position.set(PX-2.3,0,-1.6); g.add(bed); }
     const pacuNurse=mkStaff({scrub:0x7FB2D8,cap:0x3E7FA8,hands:"type"}); pacuNurse.position.set(-13.6,.12,-1.5); pacuNurse.rotation.y=-Math.PI/2; g.add(pacuNurse);
     /* ---------- 呼救:麻醉主治醫師與三位麻醉專科護理師從門口衝進來 ---------- */
-    const HELP=[{o:{scrub:0x2E5E9E,gown:0xF7F7F4,cap:0x2E5E9E,hands:"front"},to:[-1.4,7.4]},{o:{scrub:0x5FA98F,cap:0x3F8F72},to:[-5.4,7.4]},{o:{scrub:0x5FA98F,cap:0xE48CA8},to:[-7.0,6.6]},{o:{scrub:0x5FA98F,cap:0xF2B544},to:[-8.4,4.8]}]
+    const HELP=[{o:{scrub:0x2E5E9E,gown:0xF7F7F4,cap:0x2E5E9E,hands:"front"},to:[-1.4,7.4]},{o:{scrub:0x5FA98F,cap:0x3F8F72},to:[-3.4,7.5]},{o:{scrub:0x5FA98F,cap:0xE48CA8},to:[-5.2,7.6]},{o:{scrub:0x5FA98F,cap:0xF2B544},to:[-6.6,6.6]}]
       .map(h=>{ const p=mkStaff(h.o); p.visible=false; g.add(p); return {p,to:h.to,t:0}; });
     let helpOn=false;
-    function help(){ if(helpOn) return; helpOn=true; HELP.forEach((h,i)=>{ h.p.visible=true; h.p.position.set(0,.12,D/2+3+i*1.6); h.t=-i*.35; }); }
+    function help(){ if(helpOn) return; helpOn=true; HELP.forEach((h,i)=>{ h.p.visible=true; h.p.position.set(W/2+3+i*1.6,.12,DZC); h.t=-i*.35; h.wp=[[W/2-1.2,DZC],[5.0,6.4],h.to]; }); }
     /* ---------- ACLS:壓胸與電擊 ---------- */
     const defib=new THREE.Group(); { const cb=new THREE.Mesh(new RoundedBoxGeometry(1.1,1.6,.8,2,.08),M(0xE2463F)); cb.position.y=.8; defib.add(cb);
       const dm=new THREE.Mesh(new RoundedBoxGeometry(.9,.6,.5,2,.06),M(0x2A3038)); dm.position.y=1.9; defib.add(dm);
@@ -951,7 +984,7 @@ async function buildWorld(){
       const gp=new THREE.Mesh(new RoundedBoxGeometry(1.4,.45,2.7,3,.2),M(0x9CC8E8)); gp.position.set(0,1.65,-.3); gur.add(gp); const gh=new THREE.Mesh(new THREE.SphereGeometry(.42,16,12),M(0xF2CDB0)); gh.position.set(0,1.75,1.35); gur.add(gh);
       const mo=new THREE.Mesh(new RoundedBoxGeometry(.9,.6,.15,2,.05),M(0x2A3038)); mo.position.set(0,2.2,-1.9); gur.add(mo); }
     gur.visible=false; g.add(gur);
-    const GPATH=[[3.4,4.6],[1.2,6.6],[0,8.4],[0,11.6],[-12.6,11.6],[-16,6.8],[-16,1.4]];
+    const GPATH=[[3.6,3.6],[6.4,1.0],[7.6,-3.2],[9.0,DZC],[W/2+1.8,DZC],[W/2+1.8,11.6],[-12.6,11.6],[-16,6.8],[-16,1.4]];
     let ho=null;
     // 推床出發後,手術台上的病人就不再顯示(病人已經在推床上)
     const patParts=[]; g.traverse(o=>{ if(o.isMesh&&(o.material===patM||o.material===drapeM)) patParts.push(o); }); patParts.push(head,pillow,ether,gear);
@@ -962,7 +995,7 @@ async function buildWorld(){
     const _nl=new THREE.Vector3(); const dodge=(p)=>{ g.updateMatrixWorld(); _nl.copy(nurse.position); g.worldToLocal(_nl); const dx=p.position.x-_nl.x, dz=p.position.z-_nl.z, d=Math.hypot(dx,dz), R=1.25; if(d<R&&d>1e-4){ p.position.x=_nl.x+dx/d*R; p.position.z=_nl.z+dz/d*R; } };
     let cRet=null;   // 送完病人後,巡迴護理師沿原路走回手術室
     const chairs=[]; let restOn=false, circRest=false;
-    const CHAIRS=[["外科醫師",7.3,-3.0],["外科住院醫師",-7.3,-3.4],["巡迴護理師",8.5,1.4]];
+    const CHAIRS=[["外科醫師",5.6,-3.4],["外科住院醫師",-7.3,-3.4],["巡迴護理師",8.5,1.4]];
     function addChairs(src){ CHAIRS.forEach(([role,x,z])=>{ const c=src.clone(); c.scale.setScalar(.88); c.position.set(x,.12,z); c.rotation.set(0,Math.atan2(-x,-z),0); g.add(c); chairs.push({role,c,x,z,ry:Math.atan2(-x,-z)}); }); }
     const sitPose=(p,ch,dt)=>{ const u=p.userData; p.position.x+=(ch.x-p.position.x)*Math.min(1,dt*6); p.position.z+=(ch.z-p.position.z)*Math.min(1,dt*6); p.position.y=-.3; p.rotation.set(0,ch.ry,0);
       u.legs.forEach(l=>l.rotation.x=-1.45); u.arms.forEach(a=>{ a.ar.rotation.x=-.5; a.ar.rotation.z=a.sx*.15; a.fo.rotation.x=-1.0; }); };
@@ -971,8 +1004,8 @@ async function buildWorld(){
         const sw=Math.sin(tt*(sp>3?13:9))*.55; u.legs[0].rotation.x=sw; u.legs[1].rotation.x=-sw; u.arms.forEach(a=>{ a.ar.rotation.x=-a.sx*sw*.7; a.fo.rotation.x=-.4; }); dodge(p); return false; }
       u.legs.forEach(l=>l.rotation.x*=.8); return true; };
     function eventTick(dt,tt){
-      HELP.forEach((h,hi)=>{ if(!h.p.visible) return; if(cprOn&&hi===1) return; h.t+=dt; if(h.t<0) return; const pts=[[0,D/2-1.2],h.to]; const atDoor=h.p.position.z<=D/2-1.1;
-        const [tx,tz]=atDoor?h.to:pts[0]; if(walkTo(h.p,tx,tz,dt,5.2,tt)&&atDoor){ h.p.rotation.y+=((-Math.PI*.85)-h.p.rotation.y)*Math.min(1,dt*4); h.p.userData.arms.forEach(a=>{ a.ar.rotation.x=-.6; a.fo.rotation.x=-1.2+Math.sin(tt*5+a.sx)*.15; }); } });
+      HELP.forEach((h,hi)=>{ if(!h.p.visible) return; if(cprOn&&hi===1) return; h.t+=dt; if(h.t<0) return; if(!h.wp) h.wp=[h.to]; const last=h.wp.length===1;
+        const [tx,tz]=h.wp[0]; if(walkTo(h.p,tx,tz,dt,5.2,tt)){ if(!last){ h.wp.shift(); return; } h.p.rotation.y+=((-Math.PI*.85)-h.p.rotation.y)*Math.min(1,dt*4); h.p.userData.arms.forEach(a=>{ a.ar.rotation.x=-.6; a.fo.rotation.x=-1.2+Math.sin(tt*5+a.sx)*.15; }); } });
       if(ho&&!ho.done){ const t=GPATH[ho.i], dx=t[0]-gur.position.x, dz=t[1]-gur.position.z, dist=Math.hypot(dx,dz);
         if(dist>.06){ const s2=Math.min(dist,dt*2.4); gur.position.x+=dx/dist*s2; gur.position.z+=dz/dist*s2; const want=Math.atan2(dx,dz); let df=want-gur.rotation.y; while(df>Math.PI) df-=2*Math.PI; while(df<-Math.PI) df+=2*Math.PI; gur.rotation.y+=df*Math.min(1,dt*6); }
         else if(++ho.i>=GPATH.length){ ho.done=true; ho.retT=2.5; gur.rotation.y=Math.PI; const cb=ho.cb; ho.cb=null; cb&&cb(); }
@@ -1248,7 +1281,7 @@ async function buildWorld(){
     const pocket=new THREE.Mesh(new RoundedBoxGeometry(.3,.26,.04,2,.03),M(SCRUB2)); pocket.position.set(-.3,1.55,.37); body.add(pocket);
     const pen=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.3,6),M(0xE46F8E)); pen.position.set(-.36,1.66,.39); body.add(pen);
     // badge
-    const badge=new THREE.Mesh(new THREE.PlaneGeometry(.34,.2),new THREE.MeshBasicMaterial({map:tex(256,150,(g,w,h)=>{ g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.fillStyle="#E46F8E"; g.fillRect(0,0,w,34); g.fillStyle="#3B3347"; g.font='700 52px "Noto Sans TC"'; g.textAlign="center"; g.fillText("CRNA",w/2,108); })}));
+    const badge=new THREE.Mesh(new THREE.PlaneGeometry(.34,.2),new THREE.MeshBasicMaterial({map:tex(256,150,drawBadge)})); badge.name="badge";   // 名牌:上面是自訂名字,下面是身份 SNA / CRNA
     badge.position.set(-.28,1.32,.37); body.add(badge);
     // neck + head
     const neck=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.22,12),M(SKIN)); neck.position.y=2.18; body.add(neck);
@@ -2365,7 +2398,7 @@ async function buildWorld(){
   const ringPt=(I,a)=>new THREE.Vector3(I.c.x+Math.cos(a)*I.ring,0,I.c.z+Math.sin(a)*I.ring);
   function arcI(I,a0,a1){ let d=a1-a0; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; const n=Math.max(1,Math.ceil(Math.abs(d)/.35)); const out=[]; for(let i=1;i<=n;i++) out.push(ringPt(I,a0+d*i/n)); return out; }
   function within(I,from,to){ const T=new THREE.Vector3(to.x,0,to.z);
-    if(I.room){ const R=I.room, a=R.inside(from), b=R.inside(to); if(a&&b) return [T]; if(a) return [R.doorIn.clone(),R.doorOut.clone(),...R.around(R.doorOut,T),T]; if(b) return [...R.around(from,R.doorOut),R.doorOut.clone(),R.doorIn.clone(),T]; return [...R.around(from,T),T]; }
+    if(I.room){ const R=I.room, a=R.inside(from), b=R.inside(to); if(a&&b) return [T]; const V=(p)=>R.viaFor(p)?[R.via.clone()]:[]; if(a) return [...V(from),R.doorIn.clone(),R.doorOut.clone(),...R.around(R.doorOut,T),T]; if(b) return [...R.around(from,R.doorOut),R.doorOut.clone(),R.doorIn.clone(),...V(T),T]; return [...R.around(from,T),T]; }
     if(!I.ring) return [T];
     const fx=from.x-I.c.x, fz=from.z-I.c.z, tx=to.x-I.c.x, tz=to.z-I.c.z, abx=tx-fx, abz=tz-fz, L2=abx*abx+abz*abz||1;
     const k=Math.max(0,Math.min(1,-(fx*abx+fz*abz)/L2)); const near=Math.hypot(fx+abx*k,fz+abz*k), lim=I.i===0?4.9:I.ring-1.0;
@@ -3156,7 +3189,7 @@ async function buildWorld(){
     _exits:()=>ISL.map(I=>{ const O=outer(I); return O?[+O.a.toFixed(2),+O.rW.toFixed(1),O.I.i]:null; }), _br:()=>BRIDGES.map(b=>[b.a.x,b.a.z,b.b.x,b.b.z]), _off:()=>OFF&&{phase:OFF.phase,kind:OFF.kind}, _isl:()=>ISL.map(I=>[I.c.x,I.c.z,I.R]), _goIsl:(i)=>{ const I=ISL[i]; nurse.position.set(I.c.x+(I.ring?I.ring+2:PR+3),TOP,I.c.z); },
     _pet:(i)=>petTurtle(TURTLES.list[i||0].g), _turtles:()=>TURTLES.list, _snk:()=>snorkelFind(), _gull:()=>LIFE.gullNow(), _gulls:()=>LIFE.gulls, _fallen:()=>FALLEN, _bonus:()=>window.__coins(),
     _dropLitter:()=>{ const lit=mkLitter(0xE46F8E,false); lit.position.set(nurse.position.x+2,TOP+.3,nurse.position.z+1); lit.userData={v:new THREE.Vector3(),t:0,act:"pick",item:"垃圾",fallen:true,rest:true,age:20}; scene.add(lit); FALLEN.push(lit); return lit; },
-    offStart:(k)=>{ const was=SNORKEL; SNORKEL=k==="snorkel"; offStart(k==="snorkel"?"free":k); if(SNORKEL&&!was&&OFF) toast("🤿 戴上面鏡去浮潛!在海裡游一游,會撿到金幣、垃圾、漂流瓶題目或各種收藏品"); setHud(); }, offEnd:()=>offEnd(), fishStart:()=>fishStart(), fishEnd:()=>fishEnd(), _approach:(k)=>approach(k,k==="iv"?IV.g:k==="stool"?STOOL.g:LOUNGERS[0]), _obs:()=>OBS.map(o=>[+o.c.x.toFixed(1),+o.c.z.toFixed(1),+o.r.toFixed(2)]), _act:(k,i)=>actOn(k,k==="wish"?FOUNTAIN:k==="palm"?trees.filter(t=>t.visible)[i||0]:k==="pick"?LIFE.picks[i||0]:k==="castle"?BEACH.castles[i||0]:BEACH.rings[i||0]), _trees:()=>{ const c={}; trees.forEach(t=>{ const k=islandAt(t.position).i+(t.visible?"":"h"); c[k]=(c[k]||0)+1; }); return c; }, _busy:()=>[!!BUSY,!!SAND,!!RINGPOST,FALLEN.length,OFF&&OFF.ring], _useOrb:()=>useOrb(), _act2:(k)=>{ if(k==="boat") boatToggle(BEACH.boats[0]); if(k==="heart") liftHeart(BEACH.hearts[0]); }, _st:()=>({boat:!!BOAT,carry:!!CARRY,turtles:TURTLES.list.map(t=>t.mode+":"+t.g.position.x.toFixed(1)), tpos:TURTLES.list.map(t=>[t.g.position.x,t.g.position.y,t.g.position.z,t.mode]),heart:BEACH.hearts[0]&&BEACH.hearts[0].position.toArray().map(v=>+v.toFixed(1)),boatPos:BEACH.boats[0]&&BEACH.boats[0].position.toArray().map(v=>+v.toFixed(1)),nurse:nurse.position.toArray().map(v=>+v.toFixed(1))}), _walk:(x,z)=>walkHere(new THREE.Vector3(x,0,z)), _arm:(sx,sy,sz,fx)=>{ const ud=nurse.userData; ud.armR.sh.rotation.set(sx,sy,sz); ud.armR.fore.rotation.x=fx; nurse.updateMatrixWorld(true); const h=ud.armR.hand.getWorldPosition(new THREE.Vector3()), hd=ud.head.getWorldPosition(new THREE.Vector3()); const inv=nurse.matrixWorld.clone().invert(); h.applyMatrix4(inv); hd.applyMatrix4(inv); return {hand:h.toArray().map(v=>+v.toFixed(2)), head:hd.toArray().map(v=>+v.toFixed(2))}; }, _coins:()=>BURIED.list.filter(g=>g.visible).length, _litter:()=>FALLEN.filter(o=>o.userData.item==="垃圾").length, _collect:(it)=>{ const o=it==="金幣"?BURIED.list.find(g=>g.visible):FALLEN.find(x=>x.userData.item==="垃圾"&&x.userData.rest); if(o) collect(o); return !!o; }, _dance:()=>dance(), _ivPos:()=>IV.g.position.toArray().map(v=>+v.toFixed(2)), _notes:()=>NOTES.length, _pathTo:(x,z)=>pathTo(new THREE.Vector3(x,0,z)).map(p=>[+p.x.toFixed(1),+p.z.toFixed(1)]), _room:()=>{ const R=ISL[3].room; return {doorOut:[R.doorOut.x,R.doorOut.z], c:[ISL[3].c.x,ISL[3].c.z], shore:[outer(ISL[3]).shore.x,outer(ISL[3]).shore.z], inside:(x,z)=>R.inside({x,z})}; }, _board:(i)=>takeBoard(BEACH.boards[i||0]), _vball:()=>vballPlay(BEACH.vb.net), _boards:()=>BEACH.boards.map(g=>[g.userData.kind,+g.position.x.toFixed(1),+g.position.z.toFixed(1),g.userData.bd[0].visible]), _vb:()=>BEACH.vb.net&&BEACH.vb.net.userData.ball.position.toArray().map(x=>+x.toFixed(2)), _lounge:()=>!!LOUNGE, _orb:()=>ORB.g.visible, jumpTo:(s,b)=>jumpTo(s,b), _fish:()=>FISH&&FISH.phase, _off:()=>OFF&&{ph:OFF.phase,kind:OFF.kind}, setFace:(f)=>{ manualFace=f; autoNext=0; }, react:(k)=>react(k), _face:()=>curFace, _nb:()=>{ const b=new THREE.Box3().setFromObject(nurse); return [b.min.toArray(),b.max.toArray(),nurse.scale.x]; }, _dbg:()=>({off:OFF&&{ph:OFF.phase,a:+OFF.a.toFixed(2),r:OFF.r&&+OFF.r.toFixed(1)},v:OFF&&OFF.v&&OFF.v.position.toArray().map(x=>+x.toFixed(1)),tgt:controls.target.toArray().map(x=>+x.toFixed(1)),cam:camera.position.toArray().map(x=>+x.toFixed(1)),tw:!!camTween}), dance:()=>dance(), goIV:()=>goIV(), goStool:()=>goStool(), _stool:()=>onStool, _sb:()=>{ const b=new THREE.Box3().setFromObject(STOOL.g); return [STOOL.g.parent===nurse, STOOL.g.visible, b.min.toArray().map(v=>+v.toFixed(2)), b.max.toArray().map(v=>+v.toFixed(2)), nurse.position.toArray().map(v=>+v.toFixed(2))]; }, goIsland:(i,inst)=>goIsland(i,inst),
+    offStart:(k)=>{ const was=SNORKEL; SNORKEL=k==="snorkel"; offStart(k==="snorkel"?"free":k); if(SNORKEL&&!was&&OFF) toast("🤿 戴上面鏡去浮潛!在海裡游一游,會撿到金幣、垃圾、漂流瓶題目或各種收藏品"); setHud(); }, offEnd:()=>offEnd(), fishStart:()=>fishStart(), fishEnd:()=>fishEnd(), _approach:(k)=>approach(k,k==="iv"?IV.g:k==="stool"?STOOL.g:LOUNGERS[0]), _obs:()=>OBS.map(o=>[+o.c.x.toFixed(1),+o.c.z.toFixed(1),+o.r.toFixed(2)]), _act:(k,i)=>actOn(k,k==="wish"?FOUNTAIN:k==="palm"?trees.filter(t=>t.visible)[i||0]:k==="pick"?LIFE.picks[i||0]:k==="castle"?BEACH.castles[i||0]:BEACH.rings[i||0]), _trees:()=>{ const c={}; trees.forEach(t=>{ const k=islandAt(t.position).i+(t.visible?"":"h"); c[k]=(c[k]||0)+1; }); return c; }, _busy:()=>[!!BUSY,!!SAND,!!RINGPOST,FALLEN.length,OFF&&OFF.ring], _useOrb:()=>useOrb(), _act2:(k)=>{ if(k==="boat") boatToggle(BEACH.boats[0]); if(k==="heart") liftHeart(BEACH.hearts[0]); }, _st:()=>({boat:!!BOAT,carry:!!CARRY,turtles:TURTLES.list.map(t=>t.mode+":"+t.g.position.x.toFixed(1)), tpos:TURTLES.list.map(t=>[t.g.position.x,t.g.position.y,t.g.position.z,t.mode]),heart:BEACH.hearts[0]&&BEACH.hearts[0].position.toArray().map(v=>+v.toFixed(1)),boatPos:BEACH.boats[0]&&BEACH.boats[0].position.toArray().map(v=>+v.toFixed(1)),nurse:nurse.position.toArray().map(v=>+v.toFixed(1))}), _walk:(x,z)=>walkHere(new THREE.Vector3(x,0,z)), _arm:(sx,sy,sz,fx)=>{ const ud=nurse.userData; ud.armR.sh.rotation.set(sx,sy,sz); ud.armR.fore.rotation.x=fx; nurse.updateMatrixWorld(true); const h=ud.armR.hand.getWorldPosition(new THREE.Vector3()), hd=ud.head.getWorldPosition(new THREE.Vector3()); const inv=nurse.matrixWorld.clone().invert(); h.applyMatrix4(inv); hd.applyMatrix4(inv); return {hand:h.toArray().map(v=>+v.toFixed(2)), head:hd.toArray().map(v=>+v.toFixed(2))}; }, _coins:()=>BURIED.list.filter(g=>g.visible).length, _litter:()=>FALLEN.filter(o=>o.userData.item==="垃圾").length, _collect:(it)=>{ const o=it==="金幣"?BURIED.list.find(g=>g.visible):FALLEN.find(x=>x.userData.item==="垃圾"&&x.userData.rest); if(o) collect(o); return !!o; }, _dance:()=>dance(), _ivPos:()=>IV.g.position.toArray().map(v=>+v.toFixed(2)), _notes:()=>NOTES.length, _pathTo:(x,z)=>pathTo(new THREE.Vector3(x,0,z)).map(p=>[+p.x.toFixed(1),+p.z.toFixed(1)]), _room:()=>{ const R=ISL[3].room; return {doorOut:[R.doorOut.x,R.doorOut.z], c:[ISL[3].c.x,ISL[3].c.z], shore:[outer(ISL[3]).shore.x,outer(ISL[3]).shore.z], inside:(x,z)=>R.inside({x,z})}; }, _board:(i)=>takeBoard(BEACH.boards[i||0]), _vball:()=>vballPlay(BEACH.vb.net), _boards:()=>BEACH.boards.map(g=>[g.userData.kind,+g.position.x.toFixed(1),+g.position.z.toFixed(1),g.userData.bd[0].visible]), _vb:()=>BEACH.vb.net&&BEACH.vb.net.userData.ball.position.toArray().map(x=>+x.toFixed(2)), _lounge:()=>!!LOUNGE, _orb:()=>ORB.g.visible, jumpTo:(s,b)=>jumpTo(s,b), _fish:()=>FISH&&FISH.phase, _off:()=>OFF&&{ph:OFF.phase,kind:OFF.kind}, setFace:(f)=>{ manualFace=f; autoNext=0; }, react:(k)=>react(k), _face:()=>curFace, _nb:()=>{ const b=new THREE.Box3().setFromObject(nurse); return [b.min.toArray(),b.max.toArray(),nurse.scale.x]; }, _dbg:()=>({off:OFF&&{ph:OFF.phase,a:+OFF.a.toFixed(2),r:OFF.r&&+OFF.r.toFixed(1)},v:OFF&&OFF.v&&OFF.v.position.toArray().map(x=>+x.toFixed(1)),tgt:controls.target.toArray().map(x=>+x.toFixed(1)),cam:camera.position.toArray().map(x=>+x.toFixed(1)),tw:!!camTween}), dance:()=>dance(), goIV:()=>goIV(), goStool:()=>goStool(), _stool:()=>onStool, _sb:()=>{ const b=new THREE.Box3().setFromObject(STOOL.g); return [STOOL.g.parent===nurse, STOOL.g.visible, b.min.toArray().map(v=>+v.toFixed(2)), b.max.toArray().map(v=>+v.toFixed(2)), nurse.position.toArray().map(v=>+v.toFixed(2))]; }, goIsland:(i,inst)=>goIsland(i,inst), setBadge:()=>{ const b=nurse.getObjectByName("badge"); if(b){ b.material.map=tex(256,150,drawBadge); b.material.needsUpdate=true; } },
     toggleGold:(v)=>{ gold=v===undefined?!gold:v; nurse.userData.setCap(gold); try{ localStorage.setItem("island-gold",gold?"1":"0"); }catch(e){} }, isOff:()=>!!OFF, _np:()=>[+nurse.position.x.toFixed(1),+nurse.position.z.toFixed(1)], _iv:()=>toggleIV(),    _pose:(...a)=>LIFE._pose(...a), _orca:(i)=>LIFE._orca(i),
     _look(x,y,z,tx,ty,tz){ camTween=null; controls.enabled=false; camera.position.set(x,y,z); controls.target.set(tx,ty,tz); controls.update(); },
     _peek(k=1.9,hy=1.75){ const n=nurse.position, f=new THREE.Vector3(0,0,1).applyQuaternion(nurse.quaternion); camTween=null; controls.enabled=false; camera.position.set(n.x+f.x*k,n.y+hy+.3,n.z+f.z*k); controls.target.set(n.x,n.y+hy,n.z); controls.update(); }};
