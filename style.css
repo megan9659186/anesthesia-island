@@ -436,10 +436,10 @@ body.immersive .netbar{align-items:stretch}
 .orpanel .aslog ul{list-style:none;margin:4px 0 8px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px}
 .orpanel .aslog li b{color:#2E6E57;margin-right:6px}
 /* 模擬手術室:從收集冊拿出來用 */
-.orpanel .usebox{margin-top:10px;padding:10px;border:1.5px dashed #E2B86A;border-radius:14px;background:#FFF9EC}
-.orpanel .usebox .q{margin:0 0 8px}
-.orpanel .opt.use{border-color:#E2B86A;background:#FFFDF6}
-.orpanel .opt.use>b{background:#FFF0CC;font-size:15px}
-.orpanel .opt.use span b{display:inline;width:auto;height:auto;background:none;border-radius:0;color:inherit;font-size:inherit}
-.orpanel .opt.use small{display:block;font-size:12px;opacity:.7;margin-top:2px}
-.orpanel .opt.use[disabled]{opacity:.6;background:#FAF7F0}
+.orpanel .usebox{margin-top:10px;padding:8px 10px;border:1.5px dashed #E2B86A;border-radius:14px;background:#FFF9EC}
+.orpanel .usebox .bagbtn{display:flex;align-items:center;gap:6px;width:100%;font:inherit;font-size:14px;font-weight:700;color:#9A6A12;background:none;border:0;padding:2px 0;cursor:pointer;text-align:left}
+.orpanel .usebox .bagbtn small{font-weight:400;color:#B98A2E}
+.orpanel .usebox .bagbtn span{margin-left:auto}
+.orpanel .usebox .pt{margin:6px 0}
+.orpanel .usebox .chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
+.orpanel .chip.bag.done{opacity:.55}
