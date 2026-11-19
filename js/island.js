@@ -645,20 +645,28 @@ async function buildWorld(){
   const OR=(()=>{ const I=ISL[3]; const u=ISL[0].c.clone().sub(I.c).normalize(); const yaw=Math.atan2(u.x,u.z);
     const g=new THREE.Group(); g.position.set(I.c.x,TOP,I.c.z); g.rotation.y=yaw; scene.add(g);
     const W=20, D=17, WH=1.6;
-    const floorT=tex(256,256,(c,w,h)=>{ c.fillStyle="#DDEFEA"; c.fillRect(0,0,w,h); c.strokeStyle="#C3DDD6"; c.lineWidth=3; for(let i=0;i<=8;i++){ c.beginPath(); c.moveTo(i*32,0); c.lineTo(i*32,h); c.stroke(); c.beginPath(); c.moveTo(0,i*32); c.lineTo(w,i*32); c.stroke(); } });
+    // 依真實手術室照片:藍綠色帶細斑點的無縫地板,手術台與麻醉機那一區鋪淺藍色地墊
+    const floorT=tex(256,256,(c,w,h)=>{ c.fillStyle="#9FC1BC"; c.fillRect(0,0,w,h); for(let i=0;i<2600;i++){ const r=Math.random(); c.fillStyle=r<.4?"#8DB2AD":r<.7?"#B4D2CD":r<.85?"#7FA6A3":"#C9DEDB"; c.fillRect(Math.random()*w,Math.random()*h,1.6,1.6); } });
     floorT.wrapS=floorT.wrapT=THREE.RepeatWrapping; floorT.repeat.set(4,3.4);
     const fl=new THREE.Mesh(new THREE.BoxGeometry(W,.12,D),new THREE.MeshStandardMaterial({map:floorT,roughness:.6})); fl.position.y=.06; fl.receiveShadow=true; g.add(fl);
-    const wallM=M(0xCFE8E2,{roughness:.7}), trimM=M(0x8FC7B9,{roughness:.6});
-    const wall=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,WH,d),wallM); m.position.set(x,WH/2,z); g.add(m); const t=new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04),trimM); t.position.set(x,WH+.06,z); g.add(t); };
-    wall(W,.3,0,-D/2); wall(.3,D,-W/2,0); wall(.3,D,W/2,0); const dw=4.2; wall((W-dw)/2,.3,-(W+dw)/4,D/2); wall((W-dw)/2,.3,(W+dw)/4,D/2);
+    { const matT=tex(128,128,(c,w,h)=>{ c.fillStyle="#AFC3DF"; c.fillRect(0,0,w,h); for(let i=0;i<500;i++){ c.fillStyle=Math.random()<.5?"#A2B7D6":"#BDCDE6"; c.fillRect(Math.random()*w,Math.random()*h,1.5,1.5); } });
+      const mat=new THREE.Mesh(new THREE.PlaneGeometry(11.5,11),new THREE.MeshStandardMaterial({map:matT,roughness:.7})); mat.rotation.x=-Math.PI/2; mat.position.set(-1.6,.125,.6); mat.receiveShadow=true; g.add(mat); }
+    // 牆面:淡綠色;後牆與兩側牆加高,嵌著不鏽鋼框的玻璃櫃(門口那面維持矮牆,才看得到房間裡面)
+    const wallM=M(0xDCE6D2,{roughness:.75}), trimM=M(0xC4CCD2,{roughness:.35,metalness:.5});
+    const wall=(w,d,x,z,hh=WH)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,hh,d),wallM); m.position.set(x,hh/2,z); g.add(m); const t=new THREE.Mesh(new THREE.BoxGeometry(w+.04,.12,d+.04),trimM); t.position.set(x,hh+.06,z); g.add(t); };
+    const WT=3.1; wall(W,.3,0,-D/2,WT); wall(.3,D,-W/2,0,WT); wall(.3,D,W/2,0,WT); const dw=4.2; wall((W-dw)/2,.3,-(W+dw)/4,D/2); wall((W-dw)/2,.3,(W+dw)/4,D/2);
     const doorSign=new THREE.Mesh(new THREE.PlaneGeometry(3.2,.8),new THREE.MeshBasicMaterial({map:tex(320,80,(c,w,h)=>{ c.fillStyle="#2E7D6E"; c.fillRect(0,0,w,h); c.fillStyle="#fff"; c.font='400 40px "Huninn","Noto Sans TC"'; c.textAlign="center"; c.textBaseline="middle"; c.fillText("手術室 OR 1",w/2,h/2+2); })}));
     doorSign.rotation.x=-Math.PI/2; doorSign.position.set(0,.14,D/2-1.0); g.add(doorSign);
     // OR table
     const steel=M(0xCDD3D8,{roughness:.3,metalness:.6}), dark=M(0x3A414A,{roughness:.5});
-    const col=new THREE.Mesh(new THREE.CylinderGeometry(.45,.6,1.6,16),steel); col.position.set(0,.85,-.5); g.add(col);
-    const base=new THREE.Mesh(new RoundedBoxGeometry(1.6,.25,3.2,2,.1),steel); base.position.set(0,.2,-.5); g.add(base);
-    const top=new THREE.Mesh(new RoundedBoxGeometry(2.3,.35,6.4,2,.12),dark); top.position.set(0,1.78,-.5); g.add(top);
-    for(const sx of [-1,1]){ const ab=new THREE.Mesh(new RoundedBoxGeometry(1.9,.18,.55,2,.08),dark); ab.position.set(sx*1.9,1.92,1.05); g.add(ab); }
+    // 手術台照真實的電動手術台:藍色底座外殼、不鏽鋼立柱、黑色台框上鋪寶藍色台墊,兩側有側軌
+    const tblBlue=M(0x3E5F8E,{roughness:.45,metalness:.3}), padBlue=M(0x2B4D9C,{roughness:.6});
+    const base=new THREE.Mesh(new RoundedBoxGeometry(1.9,.3,3.6,2,.1),tblBlue); base.position.set(0,.22,-.5); g.add(base);
+    const col=new THREE.Mesh(new RoundedBoxGeometry(1.0,1.35,1.5,2,.08),steel); col.position.set(0,1.0,-.5); g.add(col);
+    const top=new THREE.Mesh(new RoundedBoxGeometry(2.3,.22,6.4,2,.08),dark); top.position.set(0,1.72,-.5); g.add(top);
+    const pad=new THREE.Mesh(new RoundedBoxGeometry(2.24,.16,6.3,2,.07),padBlue); pad.position.set(0,1.89,-.5); g.add(pad);
+    for(const sx of [-1,1]){ const rl=new THREE.Mesh(new THREE.BoxGeometry(.06,.1,6.2),steel); rl.position.set(sx*1.19,1.72,-.5); g.add(rl);
+      const ab=new THREE.Mesh(new RoundedBoxGeometry(1.9,.18,.55,2,.08),padBlue); ab.position.set(sx*1.9,1.92,1.05); g.add(ab); }
     // patient
     const patM=new THREE.MeshStandardMaterial({color:0xF2CDB0,roughness:.6});
     const head=new THREE.Group(); head.position.set(0,2.45,2.05); g.add(head);
@@ -719,11 +727,119 @@ async function buildWorld(){
     const monCv=document.createElement("canvas"); monCv.width=512; monCv.height=340; const monTex=new THREE.CanvasTexture(monCv); monTex.colorSpace=THREE.SRGBColorSpace;
     // Mayo stand + back table + computer cart
     const mayo=new THREE.Mesh(new THREE.BoxGeometry(1.6,.08,1.0),steel); mayo.position.set(.6,2.6,-4.6); g.add(mayo); const mpo=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,2.5,8),steel); mpo.position.set(1.2,1.3,-4.6); g.add(mpo);
-    const bt=new THREE.Mesh(new THREE.BoxGeometry(3.4,.12,1.6),M(0x3E8E9E,{roughness:.85})); bt.position.set(5.6,2.0,-6.3); g.add(bt);
+    const bt=new THREE.Mesh(new THREE.BoxGeometry(3.4,.12,1.6),M(0x3A62B0,{roughness:.9})); bt.position.set(5.6,2.0,-6.3); g.add(bt);   // 器械台鋪藍色無菌單
     for(const [x,z] of [[4.1,-5.7],[7.1,-5.7],[4.1,-6.9],[7.1,-6.9]]){ const l=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,2,6),steel); l.position.set(x,1,z); g.add(l); }
     for(let i=0;i<6;i++){ const ins=new THREE.Mesh(new THREE.BoxGeometry(.08,.04,.8),steel); ins.position.set(4.6+i*.35,2.1,-6.3); g.add(ins); }
     const cart=new THREE.Mesh(new RoundedBoxGeometry(1.5,2.1,1.2,2,.1),M(0xEDEFF2)); cart.position.set(8.2,1.05,3.8); g.add(cart);
     const lap=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.8),new THREE.MeshBasicMaterial({map:tex(160,100,(c,w,h)=>{ c.fillStyle="#F5F7FA"; c.fillRect(0,0,w,h); c.fillStyle="#2A6FBF"; c.fillRect(0,0,w,16); c.fillStyle="#99A"; for(let r=0;r<5;r++) c.fillRect(10,24+r*14,w-20,6); })})); lap.rotation.x=-Math.PI/2+.3; lap.position.set(8.2,2.2,3.8); g.add(lap);
+    /* ---------- 依真實手術室照片擺設 ---------- */
+    { const ss=M(0xC9D0D6,{roughness:.3,metalness:.65}), white=M(0xF3F4F2,{roughness:.5});
+      const fit=(c,t,x,y,mw,px,font)=>{ let s=px; do{ c.font=`${font||"500"} ${s}px "Noto Sans TC",sans-serif`; s--; }while(c.measureText(t).width>mw&&s>9); c.fillText(t,x,y); };
+      // 牆上的不鏽鋼框玻璃櫃:兩片拉門、玻璃層板,上面放貼了標籤的黃色收納籃
+      const glassBg=(c,w,h)=>{ c.fillStyle="#56656C"; c.fillRect(0,0,w,h); const gr=c.createLinearGradient(0,0,0,h); gr.addColorStop(0,"rgba(220,235,240,.25)"); gr.addColorStop(1,"rgba(0,0,0,.15)"); c.fillStyle=gr; c.fillRect(0,0,w,h); };
+      const glassFg=(c,w,h,rows)=>{ c.strokeStyle="rgba(210,240,240,.75)"; c.lineWidth=4; for(let r=1;r<rows;r++){ const y=h*r/rows; c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); }
+        c.fillStyle="rgba(255,255,255,.10)"; for(const x0 of [w*.12,w*.62]){ c.beginPath(); c.moveTo(x0,0); c.lineTo(x0+60,0); c.lineTo(x0-90,h); c.lineTo(x0-150,h); c.fill(); }
+        c.strokeStyle="#C9D1D6"; c.lineWidth=18; c.strokeRect(9,9,w-18,h-18); c.lineWidth=10; c.beginPath(); c.moveTo(w/2,0); c.lineTo(w/2,h); c.stroke(); c.fillStyle="#8E989F"; c.fillRect(w/2+10,h*.45,8,40); };
+      const bin=(c,x,y,bw,bh,label)=>{ c.fillStyle="#F2C318"; c.beginPath(); c.moveTo(x,y); c.lineTo(x+bw,y+bh*.25); c.lineTo(x+bw,y+bh); c.lineTo(x,y+bh); c.closePath(); c.fill(); c.strokeStyle="#C99A0C"; c.lineWidth=3; c.stroke();
+        c.fillStyle="rgba(255,255,255,.5)"; c.fillRect(x+bw*.15,y+bh*.05,bw*.5,bh*.2);
+        if(label){ c.fillStyle="#FBF6E4"; c.fillRect(x+bw*.08,y+bh*.5,bw*.84,bh*.38); c.fillStyle="#222"; c.textAlign="center"; c.textBaseline="middle"; label.split("\n").forEach((t,i,a)=>fit(c,t,x+bw/2,y+bh*.69+(i-(a.length-1)/2)*bh*.17,bw*.78,a.length>1?20:24)); } };
+      const binCab=(rows,head)=>tex(640,560,(c,w,h)=>{ glassBg(c,w,h); const R=rows.length, rh=h/R;
+        rows.forEach((row,r)=>row.forEach((lab,k)=>{ const cw=w/row.length; bin(c,k*cw+16,r*rh+rh*.3,cw-30,rh*.62,lab); }));
+        glassFg(c,w,h,R); if(head){ c.fillStyle="#FBF6E4"; c.fillRect(w/2-80,22,160,40); c.fillStyle="#222"; c.textAlign="center"; c.textBaseline="middle"; fit(c,head,w/2,43,150,26); } });
+      // 設備櫃:蘇打石灰罐、頭墊與趴墊、TCI 與輸液幫浦(照片上的層板標籤)
+      const tape=(c,t,x,y)=>{ c.font='700 22px "Noto Sans TC",sans-serif'; const tw=c.measureText(t).width+20; c.fillStyle="#F4EFC8"; c.fillRect(x-tw/2,y-16,tw,32); c.fillStyle="#111"; c.textAlign="center"; c.textBaseline="middle"; c.fillText(t,x,y+1); };
+      const pump=(c,x,y,s)=>{ c.fillStyle="#E9ECEF"; c.fillRect(x,y,90*s,70*s); c.fillStyle="#2C6FB8"; c.fillRect(x+12*s,y+10*s,40*s,28*s); c.fillStyle="#9AA6B2"; for(let i=0;i<3;i++) for(let j=0;j<3;j++) c.fillRect(x+58*s+j*9*s,y+12*s+i*9*s,6*s,6*s); };
+      const eqTex=tex(640,560,(c,w,h)=>{ glassBg(c,w,h); const rh=h/3;
+        c.fillStyle="#6E5A3A"; c.beginPath(); c.ellipse(200,rh*.62,46,64,-.5,0,Math.PI*2); c.fill(); c.fillStyle="#9C7E4E"; c.beginPath(); c.ellipse(186,rh*.5,30,42,-.5,0,Math.PI*2); c.fill();
+        c.fillStyle="#8D97A3"; c.fillRect(40,rh*.4,90,rh*.55); c.fillStyle="#E9EDF0"; c.fillRect(380,rh*.6,170,rh*.32);
+        pump(c,60,rh+rh*.35,1.2); pump(c,220,rh+rh*.3,1.25); c.strokeStyle="#C7CCD1"; c.lineWidth=4; c.beginPath(); c.moveTo(50,rh*1.9); c.bezierCurveTo(120,rh*1.6,30,rh*1.4,150,rh*1.35); c.stroke();
+        c.fillStyle="#F5F5F0"; c.fillRect(40,rh*2+rh*.45,200,rh*.5); c.fillRect(270,rh*2+rh*.4,140,rh*.55); bin(c,460,rh*2+rh*.35,150,rh*.6,"Ringer");
+        glassFg(c,w,h,3); tape(c,"蘇打石灰罐",170,rh*.18); tape(c,"脂肪頭墊",120,rh+rh*.15); tape(c,"Spine趴墊",250,rh+rh*.15); tape(c,"TCI",110,rh*2+rh*.15); tape(c,"亞培pump",260,rh*2+rh*.15); });
+      const cleanTex=binCab([["",""],["清潔用品","漂白水布\n消毒液"],["拖鞋套","垃圾袋"]],"清潔用品");
+      const CABS=[ // [x, z, 朝向, 材質]
+        [-7.6,-D/2+.5,0,binCab([["A-line 延長管","One dome A-line"],["喉頭面罩 3號 4號","Facial Mask"],["IV set /吸入性\n藥罐/手電筒","Trachway\nA-line kit"],["EKG 5 lead / NIBP\ncuff / A-line導線","運送用 SpO₂ / NMT\n小兒 SpO₂ / Entropy"]],"設備類")],
+        [-3.9,-D/2+.5,0,binCab([["小 垃圾袋","半/全身溫毯被"],["無菌手套","腰麻包/CVC包\n襪套/棉捲"],["腰椎穿刺針 26號\n3/0 Nylon","直插空針\n11號尖刀"],["L.R","N.S"]])],
+        [-.2,-D/2+.5,0,eqTex],
+        [3.5,-D/2+.5,0,binCab([["Endo 管","Stylet"],["Airway","牙墊"],["抽痰管","密閉式抽痰管"]])],
+        [7.2,-D/2+.5,0,cleanTex],
+        [W/2-.5,-3.2,-Math.PI/2,binCab([["縫線","紗布"],["沖洗棉棒","紗繃"],["宜拉膠","3M 膠帶"]])],
+        [W/2-.5,.6,-Math.PI/2,binCab([["Foley","尿袋"],["電燒貼片","止血帶"],["約束帶","沙袋"]])],
+        [-W/2+.5,-5.6,Math.PI/2,binCab([["Ringer","N.S"],["D5W","Voluven"],["加壓袋","輸血 set"]])],
+        [-W/2+.5,-2.0,Math.PI/2,binCab([["3-way","T-connect"],["IV 延長線","Pump bag"],["Nasal airway","Oral airway"]])]];
+      for(const [x,z,ry,t] of CABS){ const cg=new THREE.Group(); cg.position.set(x,0,z); cg.rotation.y=ry; g.add(cg);
+        const box=new THREE.Mesh(new THREE.BoxGeometry(3.6,2.9,.7),ss); box.position.set(0,1.55,0); cg.add(box);
+        const kick=new THREE.Mesh(new THREE.BoxGeometry(3.6,.5,.04),M(0xE6E9E4)); kick.position.set(0,.37,.36); cg.add(kick);
+        const fr=new THREE.Mesh(new THREE.PlaneGeometry(3.5,2.3),new THREE.MeshStandardMaterial({map:t,roughness:.25,metalness:.1})); fr.position.set(0,1.85,.355); cg.add(fr); }
+      // 天花板吊臂式無影燈:中央吊座、三支白色關節臂,燈頭推到手術台兩旁(才不會擋住畫面)
+      const lampM=M(0xF5F6F4,{roughness:.35}), lampTrim=M(0x2E5FA8,{roughness:.4});
+      const hub=new THREE.Vector3(.4,6.4,-3.6); const hubM=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.3,24),lampM); hubM.position.copy(hub); g.add(hubM);
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,1.2,12),lampM); stem.position.set(hub.x,hub.y+.6,hub.z); g.add(stem);
+      [[-4.8,4.7,-1.9,"1"],[5.2,4.5,-.6,"2"]].forEach(([lx,ly,lz,n],i)=>{ const elbow=new THREE.Vector3((hub.x+lx)/2,hub.y-.3-i*.2,(hub.z+lz)/2-.6);
+        const seg=(a,b,r)=>{ const v=b.clone().sub(a), m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,v.length(),12),lampM); m.position.copy(a).addScaledVector(v,.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize()); g.add(m); };
+        const L=new THREE.Vector3(lx,ly+.4,lz); seg(hub,elbow,.12); seg(elbow,L,.1);
+        const kn=new THREE.Mesh(new THREE.SphereGeometry(.18,14,10),lampM); kn.position.copy(elbow); g.add(kn);
+        const tag=new THREE.Mesh(new THREE.CircleGeometry(.2,16),new THREE.MeshBasicMaterial({map:tex(64,64,(c,w,h)=>{ c.fillStyle="#fff"; c.fillRect(0,0,w,h); c.fillStyle="#1E3E78"; c.font="bold 44px serif"; c.textAlign="center"; c.textBaseline="middle"; c.fillText(n,w/2,h/2+2); })})); tag.rotation.x=-Math.PI/2; tag.position.set(elbow.x,elbow.y+.19,elbow.z); tag.scale.setScalar(.7); g.add(tag);
+        const lh=new THREE.Group(); lh.position.set(lx,ly,lz); lh.scale.setScalar(.62); lh.rotation.set((lz>0?-.35:.35),0,(lx>0?.3:-.3)); g.add(lh);
+        const dome=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.35,.35,32),lampM); lh.add(dome);
+        const ring=new THREE.Mesh(new THREE.TorusGeometry(1.3,.05,8,40),lampTrim); ring.rotation.x=Math.PI/2; ring.position.y=-.1; lh.add(ring);
+        const face=new THREE.Mesh(new THREE.CircleGeometry(1.15,32),new THREE.MeshBasicMaterial({color:0xFFFBEA})); face.rotation.x=Math.PI/2; face.position.y=-.19; lh.add(face);
+        const hdl=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.45,12),M(0x2A3038)); hdl.position.y=-.4; lh.add(hdl);
+        const cap=new THREE.Mesh(new THREE.SphereGeometry(.3,14,10,0,Math.PI*2,0,Math.PI/2),lampM); cap.position.y=.17; lh.add(cap); });
+      // 麻醉機旁的天花板氣體吊塔:白色箱體,氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線垂下接到麻醉機
+      { const pg=new THREE.Group(); pg.position.set(-8.3,0,4.3); pg.rotation.y=Math.PI/2+.35; g.add(pg);
+        const pb=new THREE.Mesh(new RoundedBoxGeometry(1.1,2.4,.8,2,.06),white); pb.position.y=4.3; pg.add(pb);
+        const pst=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,1.0,12),white); pst.position.y=6.0; pg.add(pst);
+        const pt=tex(110,240,(c,w,h)=>{ c.fillStyle="#F3F4F2"; c.fillRect(0,0,w,h); [["#2FA84F",30],["#F2C318",80],["#3C78D8",130]].forEach(([col,y])=>{ c.fillStyle="#C9CDD1"; c.fillRect(14,y-14,82,32); c.fillStyle=col; c.beginPath(); c.arc(38,y+2,10,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(72,y+2,10,0,Math.PI*2); c.fill(); });
+          c.fillStyle="#E25B4B"; c.fillRect(18,176,30,40); c.fillRect(62,176,30,40); c.fillStyle="#fff"; c.fillRect(26,186,4,14); c.fillRect(36,186,4,14); c.fillRect(70,186,4,14); c.fillRect(80,186,4,14); });
+        const pf=new THREE.Mesh(new THREE.PlaneGeometry(1.0,2.2),new THREE.MeshBasicMaterial({map:pt})); pf.position.set(0,4.3,.41); pg.add(pf);
+        pg.updateMatrixWorld(true); const am=new THREE.Vector3(-1.2,.85,.4).multiplyScalar(.9).applyAxisAngle(up0,.45).add(new THREE.Vector3(-5.4,0,3.0));
+        [[0x2FA84F,-.2],[0xF2C318,0],[0x3C78D8,.2]].forEach(([col,o])=>{ const s0=new THREE.Vector3(o,3.6,.42).applyMatrix4(pg.matrix), s1=new THREE.Vector3(am.x+o*.3,2.4,am.z+.1);
+          const h=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([s0,s0.clone().add(new THREE.Vector3(0,-1.3,0)),new THREE.Vector3((s0.x+s1.x)/2,1.0,(s0.z+s1.z)/2),s1]),24,.04,6,false),M(col,{roughness:.5})); g.add(h); }); }
+      // 麻醉推車(照片):灰褐色抽屜櫃配湖水綠飾條、上層湖水綠托盤、U 型把手架與分格收納盒、側掛黃色針頭收集盒與藍蓋桶、左側收納籃
+      { const cg=new THREE.Group(); cg.position.set(-8.3,0,1.2); cg.rotation.y=.7; g.add(cg);
+        const taupe=M(0x9E968D,{roughness:.6}), teal=M(0x7ED4CC,{roughness:.5}), frameM=M(0xCFC7BC,{roughness:.5});
+        const body=new THREE.Mesh(new RoundedBoxGeometry(1.7,2.0,1.15,2,.06),taupe); body.position.y=1.25; cg.add(body);
+        const ft=tex(340,400,(c,w,h)=>{ c.fillStyle="#A59D93"; c.fillRect(0,0,w,h); const H=[54,54,54,40,56,40,56,46]; let y=0; const labs={3:"Endo/輸血set/3way lock/T-connect/IV延長線/Nasal airway",5:"紗繃、宜拉膠、3M膠帶 / pump bag / 延長線"};
+          H.forEach((dh,i)=>{ const yy=y*400/400; c.fillStyle="#8E867C"; c.fillRect(6,yy+dh-4,w-12,4); if(i!==3&&i!==5&&i!==7){ c.fillStyle="#7ED4CC"; c.fillRect(10,yy+3,w-20,9); } else if(i===3||i===5){ c.fillStyle="#7ED4CC"; c.fillRect(10,yy+3,w-20,9); }
+            c.fillStyle="#968E84"; c.fillRect(30,yy+18,w-60,8); if(labs[i]){ c.fillStyle="#F4EFC8"; c.fillRect(30,yy+3,w-60,11); c.fillStyle="#111"; c.textAlign="center"; c.textBaseline="middle"; fit(c,labs[i],w/2,yy+9,w-66,11,"700"); } y+=dh; }); });
+        const fp=new THREE.Mesh(new THREE.PlaneGeometry(1.62,1.9),new THREE.MeshStandardMaterial({map:ft,roughness:.6})); fp.position.set(0,1.25,.58); cg.add(fp);
+        const tray=new THREE.Mesh(new RoundedBoxGeometry(1.85,.2,1.25,2,.06),teal); tray.position.y=2.35; cg.add(tray);
+        const trayIn=new THREE.Mesh(new THREE.BoxGeometry(1.6,.05,1.0),M(0xA9E3DD)); trayIn.position.y=2.46; cg.add(trayIn);
+        [[0xF7F1A0,.3,.1,.7,.5,.3],[0xFFFFFF,-.4,-.1,.5,.25,-.2],[0xF2D04A,-.05,.2,.25,.25,0],[0xE4ECF2,-.5,.25,.35,.2,.6]].forEach(([col,x,z,w2,d2,r])=>{ const it=new THREE.Mesh(new THREE.BoxGeometry(w2,.06,d2),M(col)); it.position.set(x,2.5,z); it.rotation.y=r; cg.add(it); });
+        for(const sx of [-.82,.82]){ const po=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.5,8),frameM); po.position.set(sx,3.15,-.5); cg.add(po); }
+        const bar=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,1.64,8),frameM); bar.rotation.z=Math.PI/2; bar.position.set(0,3.9,-.5); cg.add(bar);
+        const shelf=new THREE.Mesh(new THREE.BoxGeometry(1.5,.06,.35),frameM); shelf.position.set(0,3.05,-.45); cg.add(shelf);
+        for(let i=0;i<5;i++){ const bx=new THREE.Mesh(new THREE.BoxGeometry(.26,.24,.28),M(0xF3EFE6)); bx.position.set(-.6+i*.3,3.2,-.45); cg.add(bx); }
+        for(const sx of [-.08,.08]){ const sc=new THREE.Mesh(new THREE.TorusGeometry(.07,.025,6,12),M(0xD8342C)); sc.position.set(.32+sx,3.42,-.45); cg.add(sc); }
+        for(let i=0;i<6;i++){ const st=new THREE.Mesh(new THREE.BoxGeometry(.035,.3,.03),M(0xE7CFA4)); st.position.set(-.62+i*.04,3.45,-.45); cg.add(st); }
+        const sharps=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.55),M(0xF2D21C,{roughness:.5})); sharps.position.set(1.15,2.0,.15); cg.add(sharps);
+        const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.25,.23,.5,16),white); bucket.position.set(1.12,.95,.2); cg.add(bucket);
+        const lid=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.07,16),M(0x2D6FD8,{roughness:.4})); lid.position.set(1.12,1.23,.2); cg.add(lid);
+        const sb=new THREE.Mesh(new THREE.BoxGeometry(.45,.6,.5),taupe); sb.position.set(-1.1,1.0,.2); cg.add(sb);
+        const sb2=new THREE.Mesh(new THREE.BoxGeometry(.42,.4,.45),M(0xA9E3DD)); sb2.position.set(-1.1,2.05,.2); cg.add(sb2);
+        for(const [x,z] of [[-.7,-.45],[.7,-.45],[-.7,.45],[.7,.45]]){ const wh=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.1,12),M(0x9AA0A6)); wh.rotation.z=Math.PI/2; wh.position.set(x,.15,z); cg.add(wh); } }
+      // 電燒主機推車(兩台藍色機器疊在不鏽鋼推車上)
+      { const eg=new THREE.Group(); eg.position.set(8.5,0,-5.9); eg.rotation.y=-Math.PI/2; g.add(eg);
+        for(const y of [.4,1.4,2.3]){ const sh=new THREE.Mesh(new THREE.BoxGeometry(1.3,.06,1.0),ss); sh.position.y=y; eg.add(sh); }
+        for(const [x,z] of [[-.6,-.45],[.6,-.45],[-.6,.45],[.6,.45]]){ const l=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,2.3,6),ss); l.position.set(x,1.2,z); eg.add(l); }
+        const u1=new THREE.Mesh(new RoundedBoxGeometry(1.1,.5,.8,2,.05),M(0x4C88C8,{roughness:.4})); u1.position.y=1.7; eg.add(u1);
+        const u2=new THREE.Mesh(new RoundedBoxGeometry(1.0,.4,.7,2,.05),M(0xEEF1F3,{roughness:.4})); u2.position.y=2.55; eg.add(u2);
+        const u3=new THREE.Mesh(new RoundedBoxGeometry(1.1,.45,.8,2,.05),M(0x3B6FAE,{roughness:.4})); u3.position.y=.68; eg.add(u3);
+        const dsp=new THREE.Mesh(new THREE.PlaneGeometry(.4,.2),new THREE.MeshBasicMaterial({color:0x7FE0A0})); dsp.position.set(-.2,1.75,.41); eg.add(dsp); }
+      // 點滴架(掛兩袋輸液)、紅色踢桶套粉紅色垃圾袋、綠色踏階兩個
+      { const ip=new THREE.Group(); ip.position.set(-3.6,0,6.2); g.add(ip);
+        for(let i=0;i<5;i++){ const a=i/5*Math.PI*2, lg=new THREE.Mesh(new THREE.BoxGeometry(.7,.06,.08),M(0x2A3038)); lg.position.set(Math.cos(a)*.35,.12,Math.sin(a)*.35); lg.rotation.y=-a; ip.add(lg); }
+        const po=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,4.4,8),ss); po.position.y=2.3; ip.add(po);
+        const hk=new THREE.Mesh(new THREE.BoxGeometry(.9,.04,.04),ss); hk.position.y=4.45; ip.add(hk);
+        for(const sx of [-.35,.35]){ const bag=new THREE.Mesh(new RoundedBoxGeometry(.32,.55,.12,2,.05),new THREE.MeshPhysicalMaterial({color:0xEAF4FA,transparent:true,opacity:.8,roughness:.2})); bag.position.set(sx,4.05,0); ip.add(bag); } }
+      { const kb=new THREE.Group(); kb.position.set(-3.4,0,-4.6); g.add(kb);
+        const bk=new THREE.Mesh(new THREE.CylinderGeometry(.5,.42,.8,20),M(0xD8342C,{roughness:.5})); bk.position.y=.55; kb.add(bk);
+        const bg=new THREE.Mesh(new THREE.SphereGeometry(.55,14,10,0,Math.PI*2,0,Math.PI/2),M(0xE94E86,{roughness:.7})); bg.scale.y=.6; bg.position.y=.95; kb.add(bg);
+        const fr=new THREE.Mesh(new THREE.TorusGeometry(.5,.04,6,20),ss); fr.rotation.x=Math.PI/2; fr.position.y=.2; kb.add(fr); }
+      for(const [x,z,r] of [[-6.6,-6.7,.1],[-4.6,-6.9,-.15]]){ const sg=new THREE.Group(); sg.position.set(x,0,z); sg.rotation.y=r; g.add(sg);
+        const tp=new THREE.Mesh(new RoundedBoxGeometry(1.4,.12,.9,2,.04),M(0x2E7A5E,{roughness:.8})); tp.position.y=.62; sg.add(tp);
+        for(const [lx,lz] of [[-.6,-.35],[.6,-.35],[-.6,.35],[.6,.35]]){ const l=new THREE.Mesh(new THREE.BoxGeometry(.08,.56,.08),ss); l.position.set(lx,.3,lz); sg.add(l); } }
+    }
     // staff
     const SKIN=0xF6D2B5;
     function mkStaff(o){ const p=new THREE.Group(); const sc=M(o.scrub,{roughness:.7}), gw=o.gown?M(o.gown,{roughness:.75}):sc, sk=M(SKIN,{roughness:.6}), glove=M(o.glove||SKIN,{roughness:.5});
