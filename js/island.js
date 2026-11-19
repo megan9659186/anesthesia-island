@@ -147,7 +147,8 @@ function orSetTarget(o,instant){ Object.assign(ORS.T,o); ["skin","alarm","shake"
 function orLoop(){ const V=ORS.V,T=ORS.T; ["hr","sbp","dbp","spo2","etco2","rr","temp"].forEach(k=>{ const d=T[k]-V[k]; if(Math.abs(d)>.05) V[k]+=d*.05; else V[k]=T[k]; });
   orPush(); const vit=$("orPanel").querySelector(".vit"); if(vit) vit.innerHTML=orVitHTML();
   //小麻一走進手術室就自動開始一題
-  { const w=window.__world, inside=!!(w&&w.inOR&&w.inOR()); if(inside&&!ORS.wasIn) orAuto(); ORS.wasIn=inside; }
+  { const w=window.__world, inside=!!(w&&w.inOR&&w.inOR()); if(inside&&!ORS.wasIn&&NET.role!=="guest") orAuto(); ORS.wasIn=inside; }
+  if(NET.role==="host"&&ORS.sc){ const now=performance.now(); if(now-(ORS.vSent||0)>250){ ORS.vSent=now; netSend({t:"v",V:["hr","sbp","dbp","spo2","etco2","rr","temp"].map(k=>Math.round(V[k]*10)/10),s:V.skin,al:!!V.alarm,sh:!!V.shake,rh:V.rhythm}); } }
   ORS.raf=requestAnimationFrame(orLoop); }
 function orVitHTML(){ const V=ORS.V, cell=(n,v,bad)=>`<div class="${bad?"bad":""}">${n}<b>${v}</b></div>`;
   return cell("HR",Math.round(V.hr),V.hr>120||V.hr<50)+cell("BP",`${Math.round(V.sbp)}/${Math.round(V.dbp)}`,V.sbp<80)+cell("SpO₂",Math.round(V.spo2)+"%",V.spo2<90)+cell("EtCO₂",Math.round(V.etco2),V.etco2<25||V.etco2>50)+cell("RR",Math.round(V.rr),V.rr<6)+cell("體溫",V.temp.toFixed(1),V.temp<35.5||V.temp>38.3); }
@@ -237,23 +238,24 @@ const orSeen=(c)=>SEEN.has(c.id)||orWon(c), markSeen=(c)=>{ SEEN.add(c.id); try{
 function orOpen(){ const P0=$("orPanel"); P0.classList.remove("min"); const mb=P0.querySelector(".mini"); if(mb) mb.textContent="▾"; P0.hidden=false; document.body.classList.add("or-run"); }
 const orHead=(kick)=>`<button class="x" type="button" aria-label="關閉">✕</button><button class="mini" type="button" aria-label="收起或展開">▾</button><div class="kick">${kick}</div>`;
 function orWire(P){ P.querySelector(".x").onclick=orClose; P.querySelector(".mini").onclick=()=>{ const m=P.classList.toggle("min"); P.querySelector(".mini").textContent=m?"▴":"▾"; }; }
-function orMenu(){ const P=$("orPanel"); orOpen(); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false);
+function orMenu(){ if(NET.role==="guest"){ toast("👥 連線中,情境由邀請你的人開始"); return; } const P=$("orPanel"); orOpen(); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false);
   P.innerHTML=orHead("🏥 模擬開刀房 · OSCE 情境")+`<div class="cols"><div><h3>選一個情境</h3>
     <p class="pt">每個狀況有四個處置可選,每個處置會把病人帶到不同的狀況;選錯還有一次補救機會,再錯病人就會死亡。生命徵象看麻醉機上的監視器。</p></div><div>`+
     OR_SCENARIOS.map((c,i)=>orSeen(c)?`<button type="button" class="scn" data-s="${i}"><b>${orWon(c)?"✅ ":"📝 "}${c.title}${c.tag?`<span class="tag">${c.tag}</span>`:""}</b><small>${c.patient}</small></button>`
       :`<button type="button" class="scn" data-s="${i}"><b>❔ 尚未練習的情境 ${i+1}</b><small>練習過之後才會顯示題目</small></button>`).join("")+`<p class="pt">已練習 ${OR_SCENARIOS.filter(orSeen).length} / ${OR_SCENARIOS.length} 題</p></div></div>`;
-  orWire(P); P.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>orStart(+b.dataset.s)); }
+  orWire(P); P.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>orStart(+b.dataset.s)); netSendOR("menu"); }
 //小麻走進手術室就隨機出一題(先出還沒通關的,不連續出同一題)
 function orAuto(){ if(ORS.sc||!$("orPanel").hidden||!OR_SCENARIOS.length) return; const all=OR_SCENARIOS.map((c,i)=>i);
   let pool=all.filter(i=>!orWon(OR_SCENARIOS[i])&&i!==ORS.idx); if(!pool.length) pool=all.filter(i=>i!==ORS.idx); if(!pool.length) pool=all;
   orStart(pool[Math.floor(Math.random()*pool.length)]); }
 const orShuffle=(n)=>{ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
-function orStart(n){ orOpen(); const w=window.__world; if(w){ w.orReset&&w.orReset(); if(w.inOR&&!w.inOR()) w.goIsland(3); }
-  ORS.cprOn=false; ORS.idx=n; ORS.sc=OR_SCENARIOS[n]; ORS.nodes={...ORS.sc.nodes,...aclsNodes(ORS.sc)}; ORS.acls=false; ORS.help=false; ORS.node=ORS.sc.start; ORS.n=1; ORS.end=null; ORS.miss=0; ORS.ck=new Set(); ORS.last=null; ORS.log=[]; ORS.isbar=null;
+function orStart(n){ if(NET.role==="guest") return; orOpen(); const w=window.__world; if(w){ w.orReset&&w.orReset(); if(w.inOR&&!w.inOR()) w.goIsland(3); }
+  ORS.cprOn=false; ORS.idx=n; ORS.sc=OR_SCENARIOS[n]; ORS.nodes={...ORS.sc.nodes,...aclsNodes(ORS.sc)}; ORS.acls=false; ORS.help=false; ORS.node=ORS.sc.start; ORS.n=1; ORS.end=null; ORS.miss=0; ORS.ck=new Set(); ORS.last=null; ORS.log=[]; ORS.logK=[]; ORS.isbar=null; ORS.isbarK=null; ORS.assist=[];
   Object.assign(ORS.V,ORV0); Object.assign(ORS.T,ORV0); orStep(); }
 function orStep(){ const nd=ORS.nodes[ORS.node]; { const w=window.__world, inArrest=/^(cpr|v\d|p\d)$/.test(String(ORS.node)); if(w&&w.orCPR&&inArrest!==!!ORS.cprOn){ ORS.cprOn=inArrest; w.orCPR(inArrest); } } ORS.order=orShuffle(nd.options.length); orSetTarget({...ORV0,...nd.v},!ORS.last); orRender(); }
 // 有人喊「呼救」:廣播「麻醉科 1 房需要幫忙」,麻醉主治醫師與三位麻醉專科護理師衝進來
-function orCallHelp(){ if(ORS.help) return; ORS.help=true; const w=window.__world; w&&w.orHelp&&w.orHelp();
+function orCallHelp(){ if(ORS.help) return; ORS.help=true; const w=window.__world; w&&w.orHelp&&w.orHelp(); orHelpBanner(); }
+function orHelpBanner(){
   let bn=document.querySelector(".orcall"); if(!bn){ bn=document.createElement("div"); bn.className="orcall"; document.body.appendChild(bn); }
   bn.textContent="📢 麻醉科 1 房需要幫忙!麻醉科 1 房需要幫忙!"; bn.classList.remove("show"); void bn.offsetWidth; bn.classList.add("show");
   try{ const on=/開/.test(($("sndToggle")||{}).textContent||""); if(on&&window.speechSynthesis){ const u=new SpeechSynthesisUtterance("麻醉科一房需要幫忙,麻醉科一房需要幫忙"); u.lang="zh-TW"; u.rate=1.05; speechSynthesis.speak(u); } }catch(e){} }
@@ -262,11 +264,11 @@ const HELP_RE=/呼救|呼叫急救小組|請求協助|call help/i;   // 只有�
 function orRender(){ const c=ORS.sc, nd=ORS.nodes[ORS.node], P=$("orPanel"), L=ORS.last;
   P.innerHTML=orHead(`${ORS.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${ORS.n} · ${c.title}`)+`<div class="cols"><div>
       <p class="pt">👤 ${c.patient}</p>
-      <p class="story">${nd.story}</p><div class="vit">${orVitHTML()}</div>
+      <p class="story">${nd.story}</p><div class="vit">${orVitHTML()}</div>${orAssistHTML()}
     </div><div><div class="q">${nd.q}</div>`+
     ORS.order.map((k,j)=>`<button type="button" class="opt" data-k="${k}"><b>${"ABCD"[j]}</b><span>${nd.options[k].t}</span></button>`).join("")+`</div></div>`;
-  P.scrollTop=0; orWire(P);
-  P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>{ const o=nd.options[+b.dataset.k]; (o.ck||[]).forEach(i=>ORS.ck.add(i));
+  P.scrollTop=0; orWire(P); netSendOR("q");
+  P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>{ const o=nd.options[+b.dataset.k]; (o.ck||[]).forEach(i=>ORS.ck.add(i)); ORS.logK.push([ORS.node,+b.dataset.k]); netSend({t:"pick",j:b.querySelector("b").textContent});
     if(o.ok){ if(!/^(cpr|v\d|p\d|rosc)$/.test(String(ORS.node))) award("scn:"+c.id+":"+ORS.node); } else if(!o.rescue){ ORS.miss++; wrongAns(); }
     if(HELP_RE.test(o.t)) orCallHelp();
     if(/電擊/.test(o.t)&&!/不可電擊|同步|不再電擊|改只給藥/.test(o.t)){ const w=window.__world; w&&w.orShock&&w.orShock(); orFlash(); }
@@ -281,21 +283,21 @@ function orRender(){ const c=ORS.sc, nd=ORS.nodes[ORS.node], P=$("orPanel"), L=O
 function orIsbar(){ const c=ORS.sc, P=$("orPanel"), L=ORS.last;
   orSetTarget({hr:82,sbp:118,dbp:70,spo2:99,etco2:36,rr:12,temp:37,skin:"normal",alarm:false,shake:false,rhythm:"sinus"});
   P.innerHTML=orHead(`🏥 OSCE 情境 · 送恢復室 · ${c.title}`)+`<div class="cols"><div><p class="pt">👤 ${c.patient}</p></div>
-    <div><p class="story">病人穩定了。手術結束後,你和巡迴護理師一起把病人推到恢復室,準備交班給恢復室護理師⋯⋯</p></div></div>`; orWire(P);
+    <div><p class="story">病人穩定了。手術結束後,你和巡迴護理師一起把病人推到恢復室,準備交班給恢復室護理師⋯⋯</p></div></div>`; orWire(P); netSendOR("go");
   let shown=false; const ask=()=>{ if(shown||ORS.sc!==c) return; shown=true; orIsbarAsk(); };
   const w=window.__world; if(w&&w.orHandoff) w.orHandoff(ask); setTimeout(ask,w&&w.orHandoff?30000:300); }
-function orIsbarAsk(){ const c=ORS.sc, P=$("orPanel"), I=c.isbar||{};
-  const full=`I:${I.i} S:${I.s} B:${I.b} A:${I.a} R:${I.r}`;
-  const opts=[
+function orIsbarOpts(c){ const I=c.isbar||{}; const full=`I:${I.i} S:${I.s} B:${I.b} A:${I.a} R:${I.r}`;
+  return [
     {t:full,ok:true,fb:"正確。ISBAR 依序交代身分、狀況、背景、評估與建議,恢復室護理師才知道要看什麼、要追什麼。"},
     {t:"病人手術順利,生命徵象穩定,有什麼問題再打電話給我。",fb:"太籠統:沒有交代身分、術中發生的事、目前的問題與要追蹤的項目。"},
     {t:`I:${I.i} S:${I.s} A:${I.a}`,fb:"少了 B(病史、過敏、術中事件與用藥)和 R(要觀察什麼、什麼情況要通知、待追蹤的檢驗)。"},
-    {t:"在走廊上先口頭交代重點,病人推進恢復室後就直接回手術室準備下一台。",fb:"交班要在床邊當面進行,一起確認生命徵象、管路與傷口,對方複述確認後才離開。"}];
-  const ord=orShuffle(4);
+    {t:"在走廊上先口頭交代重點,病人推進恢復室後就直接回手術室準備下一台。",fb:"交班要在床邊當面進行,一起確認生命徵象、管路與傷口,對方複述確認後才離開。"}]; }
+function orIsbarAsk(){ const c=ORS.sc, P=$("orPanel"); const opts=orIsbarOpts(c);
+  const ord=orShuffle(4); ORS.ibOrd=ord;
   P.innerHTML=orHead(`🏥 OSCE 情境 · ISBAR 交班 · ${c.title}`)+`<div class="cols"><div><p class="story">到恢復室了。恢復室護理師說:「好,請交班。」</p><div class="vit">${orVitHTML()}</div></div>
     <div><div class="q">哪一個交班最完整、最正確?</div>`+ord.map((k,j)=>`<button type="button" class="opt" data-k="${k}"><b>${"ABCD"[j]}</b><span>${opts[k].t}</span></button>`).join("")+`</div></div>`;
-  P.scrollTop=0; orWire(P);
-  P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>{ const o=opts[+b.dataset.k]; ORS.isbar=o; if(o.ok) award("scn:"+c.id+":isbar"); else wrongAns(); orEnd(true); }); }
+  P.scrollTop=0; orWire(P); netSendOR("ib");
+  P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>{ const o=opts[+b.dataset.k]; ORS.isbar=o; ORS.isbarK=+b.dataset.k; netSend({t:"pick",j:b.querySelector("b").textContent}); if(o.ok) award("scn:"+c.id+":isbar"); else wrongAns(); orEnd(true); }); }
 function orEnd(win,why){ const c=ORS.sc, P=$("orPanel"); ORS.end=win?"win":"dead"; markSeen(c); if(ORS.cprOn){ ORS.cprOn=false; const w=window.__world; w&&w.orCPR&&w.orCPR(false); }
   if(win){ orSetTarget({hr:80,sbp:118,dbp:70,spo2:99,etco2:36,rr:12,temp:37,skin:"normal",alarm:false,shake:false,rhythm:"sinus"}); award("scn:"+c.id+":win"); toast(`🎉 病人穩定了:${c.tag||c.title}`,"unlock"); }
   else { orSetTarget(ORDEAD,true); const w=window.__world; w&&w.react("wrong"); }
@@ -307,11 +309,11 @@ function orEnd(win,why){ const c=ORS.sc, P=$("orPanel"); ORS.end=win?"win":"dead
       <div class="nav"><button type="button" id="orAgain">${win?"再做一次":"重新挑戰"}</button>${OR_SCENARIOS.length>1?`<button type="button" class="sec" id="orNextS">下一個情境</button>`:""}<button type="button" class="sec" id="orBack">情境清單</button></div>
     </div><div><div class="q">OSCE 評分表:做到 ${got} / ${c.checklist.length} 項${win&&ORS.miss?`(中途選錯 ${ORS.miss} 次)`:""}</div>${list(c.checklist,i=>ORS.ck.has(i))}
       ${(ORS.log||[]).length?`<div class="q">逐步檢討</div><ol class="rev">${ORS.log.map(r=>`<li class="${r.cls}"><b>${r.icon}${r.t}</b><span>${r.fb}</span></li>`).join("")}</ol>`:""}
-      ${ORS.acls?`<div class="q">${c.acls&&c.acls.peds?"PALS":"ACLS"} 評分:做到 ${ACLS_CK.filter((_,i)=>ORS.ck.has("a"+i)).length} / ${ACLS_CK.length} 項</div>${list(ACLS_CK,i=>ORS.ck.has("a"+i))}`:""}</div></div>`;
-  P.scrollTop=0; orWire(P); const q=(id,f)=>{ const e=P.querySelector("#"+id); if(e) e.onclick=f; };
+      ${ORS.acls?`<div class="q">${c.acls&&c.acls.peds?"PALS":"ACLS"} 評分:做到 ${ACLS_CK.filter((_,i)=>ORS.ck.has("a"+i)).length} / ${ACLS_CK.length} 項</div>${list(ACLS_CK,i=>ORS.ck.has("a"+i))}`:""}${orAssistHTML(true)}</div></div>`;
+  P.scrollTop=0; orWire(P); netSendOR("end"); const q=(id,f)=>{ const e=P.querySelector("#"+id); if(e) e.onclick=f; };
   const pickNext=()=>{ const all=OR_SCENARIOS.map((_,i)=>i).filter(i=>i!==ORS.idx); return all[Math.floor(Math.random()*all.length)]; };
   q("orAgain",()=>orStart(ORS.idx)); q("orNextS",()=>orStart(pickNext())); q("orBack",orMenu); }
-function orClose(){ ORS.cprOn=false; $("orPanel").hidden=true; document.body.classList.remove("or-run"); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false); const w=window.__world; w&&w.orReset&&w.orReset(); }
+function orClose(){ if(NET.role==="guest"){ $("orPanel").hidden=true; document.body.classList.remove("or-run"); return; } netSendOR("off"); ORS.cprOn=false; $("orPanel").hidden=true; document.body.classList.remove("or-run"); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false); const w=window.__world; w&&w.orReset&&w.orReset(); }
 $("orStart").onclick=()=>{ if(window.__world && !window.__world.atOR()) window.__world.goIsland(3,true); orMenu(); };
 ORS.raf=requestAnimationFrame(orLoop);
 const FACES=[["smile","😊","微笑"],["laugh","😄","大笑"],["wink","😉","眨眼"],["love","😍","愛心"],["surprised","😮","驚訝"],["shy","😳","害羞"],["sleepy","😴","想睡"],["sad","😢","難過"],["angry","😠","生氣"]];
@@ -320,7 +322,7 @@ const FACES=[["smile","😊","微笑"],["laugh","😄","大笑"],["wink","😉",
     box.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===k)); $("faceToggle").textContent=k==="auto"?"🔄 表情":(FACES.find(f=>f[0]===k)||FACES[0])[1]+" 表情"; try{ localStorage.setItem("island-face",k); }catch(e){} if(window.__world) window.__world.setFace(k==="auto"?null:k); };
   box.addEventListener("click",e=>{ const b=e.target.closest("[data-f]"); if(b) pick(b.dataset.f); });
   window.__pickFace=pick; }
-const panels=[["islToggle","islbar"],["coinToggle","skillbar"],["faceToggle","facebar"],["offToggle","offbar"],["wxToggle","wxbar"]];
+const panels=[["islToggle","islbar"],["coinToggle","skillbar"],["faceToggle","facebar"],["offToggle","offbar"],["wxToggle","wxbar"],["netToggle","netbar"]];
 panels.forEach(([t,p])=>{ const el=$(t); const old=el.onclick; el.onclick=()=>{ panels.forEach(([t2,p2])=>{ if(p2!==p){ $(p2).classList.add("closed"); $(t2).setAttribute("aria-expanded",false); } }); const c=$(p).classList.toggle("closed"); el.setAttribute("aria-expanded",!c); }; });
 $("offbar").addEventListener("click",e=>{ const b=e.target.closest("[data-off]"); if(!b||!window.__world) return; const k=b.dataset.off;
   const sk={swim:"swim",hawaii:"sail",free:"freeswim",snorkel:"freeswim",fish:"fish"}[k]; if(k!=="work"&&!hasSkill(sk)){ lockMsg(sk); return; }
@@ -339,9 +341,9 @@ $("aboutBtn").onclick=()=>{ const m=document.createElement("div"); m.className="
    存在 localStorage:island-name(名字)、island-role("SNA" 或 "CRNA")。每次打開網站都會先出現,帶入上次填的內容。 */
 const PLAYER={ name:(()=>{ try{ return localStorage.getItem("island-name")||""; }catch(e){ return ""; } })(), role:(()=>{ try{ return localStorage.getItem("island-role")==="SNA"?"SNA":"CRNA"; }catch(e){ return "CRNA"; } })() };
 const esc=(t)=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function drawBadge(g,w,h){ const sna=PLAYER.role==="SNA"; g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.fillStyle=sna?"#3C9AD6":"#E46F8E"; g.fillRect(0,0,w,40);
-  g.textAlign="center"; g.textBaseline="middle"; if(PLAYER.name){ g.fillStyle="#fff"; let s=30; do{ g.font=`700 ${s}px "Noto Sans TC",sans-serif`; s--; }while(g.measureText(PLAYER.name).width>w-16&&s>12); g.fillText(PLAYER.name,w/2,21); }
-  g.fillStyle="#3B3347"; g.font='700 56px "Noto Sans TC",sans-serif'; g.fillText(PLAYER.role,w/2,98); }
+function drawBadge(g,w,h,P){ P=P||PLAYER; const sna=P.role==="SNA"; g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.fillStyle=sna?"#3C9AD6":"#E46F8E"; g.fillRect(0,0,w,40);
+  g.textAlign="center"; g.textBaseline="middle"; if(P.name){ g.fillStyle="#fff"; let s=30; do{ g.font=`700 ${s}px "Noto Sans TC",sans-serif`; s--; }while(g.measureText(P.name).width>w-16&&s>12); g.fillText(P.name,w/2,21); }
+  g.fillStyle="#3B3347"; g.font='700 56px "Noto Sans TC",sans-serif'; g.fillText(P.role,w/2,98); }
 function playerChip(){ const t=document.querySelector(".ttl"); if(!t) return; let c=$("meChip"); if(!c){ c=document.createElement("button"); c.type="button"; c.id="meChip"; c.className="mechip"; c.title="修改名字與身份"; c.onclick=()=>openIntro(true); t.appendChild(c); }
   c.innerHTML=`<i class="${PLAYER.role==="SNA"?"sna":"crna"}">${PLAYER.role}</i>${esc(PLAYER.name||"小麻")}`; }
 function openIntro(edit){ const m=document.createElement("div"); m.className="intro";
@@ -356,10 +358,125 @@ function openIntro(edit){ const m=document.createElement("div"); m.className="in
   let role=PLAYER.role; m.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ role=b.dataset.r; m.querySelectorAll("[data-r]").forEach(x=>x.setAttribute("aria-checked",x===b)); });
   m.querySelector("form").onsubmit=e=>{ e.preventDefault(); PLAYER.name=m.querySelector("#inName").value.trim().slice(0,10); PLAYER.role=role;
     try{ localStorage.setItem("island-name",PLAYER.name); localStorage.setItem("island-role",role); }catch(err){}
-    m.remove(); playerChip(); if(window.__world&&window.__world.setBadge) window.__world.setBadge(); };
+    m.remove(); playerChip(); if(window.__world&&window.__world.setBadge) window.__world.setBadge(); netSend({t:"hi",name:PLAYER.name,role:PLAYER.role}); if(NET.pendingJoin){ const c=NET.pendingJoin; NET.pendingJoin=null; netJoin(c); } };
   if(edit) m.onclick=e=>{ if(e.target===m) m.remove(); };
   document.body.appendChild(m); setTimeout(()=>{ const i=m.querySelector("#inName"); if(i&&!PLAYER.name) i.focus(); },50); }
-playerChip(); openIntro(false);
+playerChip(); openIntro(false); setTimeout(()=>netUI(),0);
+
+/* ---------- 連線一起玩:邀請朋友來自己的島(PeerJS 點對點連線,不需要帳號;公共伺服器只負責配對) ----------
+   邀請者(host)產生 6 碼房號,朋友(guest)輸入房號或點邀請連結加入;最多 3 位朋友。
+   每 0.1 秒互傳自己小麻的位置、姿勢、服裝、表情與正在做的事,對方的小麻會出現在你的島上。
+   模擬手術室:由邀請者開始情境、作答;朋友看到同一題與同一台監視器,不能作答,但可以「協助」或從背包拿東西出來用(用掉會扣背包數量)。
+   手術室同步只傳題目編號與狀態,朋友那邊用自己的題庫畫面,不傳 HTML。 */
+function netFx(fn,a){ if(NET.role==="host") netSend({t:"fx",fn,a}); }
+const NET={peer:null,role:null,code:null,conns:new Map(),prof:new Map(),host:null,status:"",pendingJoin:null,asT:0};
+const NET_PREFIX="anesthesia-island-room-", NET_MAX=3, NET_ALPHA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const netStr=(x,n)=>String(x==null?"":x).slice(0,n);
+const netNum=(x)=>{ const v=+x; return Number.isFinite(v)?v:0; };
+const netName=(k)=>{ const p=NET.prof.get(k); return (p&&p.name)||"朋友"; };
+function netLib(){ if(window.Peer) return Promise.resolve(); return new Promise((ok,no)=>{ const sc=document.createElement("script"); sc.src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"; sc.onload=ok; sc.onerror=()=>no(new Error("lib")); document.head.appendChild(sc); }); }
+const netOpts=()=>Object.assign({debug:0},window.ISLAND_PEER_OPTS||{});
+function netSend(d,except){ if(!NET.role) return; for(const [k,v] of NET.conns){ if(k!==except&&v.c.open){ try{ v.c.send(d); }catch(e){} } } }
+function netErr(e){ const t=e&&e.type; NET.status=t==="peer-unavailable"?"找不到這個房號,請確認房號,或請朋友重新邀請。":t==="unavailable-id"?"":t==="browser-incompatible"?"這個瀏覽器不支援連線。":"連不上:可能是網路擋住了點對點連線(醫院或公司 Wi‑Fi 常會擋),換成手機網路再試試看。"; netUI(); }
+async function netHost(){ if(NET.role) return; NET.status="準備房間中⋯"; netUI();
+  try{ await netLib(); }catch(e){ NET.status="連線元件下載失敗,請檢查網路。"; netUI(); return; }
+  const code=Array.from({length:6},()=>NET_ALPHA[Math.floor(Math.random()*NET_ALPHA.length)]).join("");
+  const peer=new Peer(NET_PREFIX+code,netOpts()); NET.peer=peer;
+  peer.on("open",()=>{ NET.role="host"; NET.code=code; NET.status=""; netUI(); });
+  peer.on("connection",c=>{ if(NET.conns.size>=NET_MAX){ c.on("open",()=>{ try{ c.send({t:"full"}); }catch(e){} setTimeout(()=>c.close(),400); }); return; } netWire(c); });
+  peer.on("error",e=>{ if(e&&e.type==="unavailable-id"){ peer.destroy(); NET.peer=null; netHost(); return; } if(!NET.role){ peer.destroy(); NET.peer=null; } netErr(e); });
+  peer.on("disconnected",()=>{ try{ peer.reconnect(); }catch(e){} }); }
+async function netJoin(code){ code=netStr(code,12).toUpperCase().replace(/[^A-Z0-9]/g,""); if(code.length!==6){ NET.status="房號是 6 個英文字母或數字。"; netUI(); return; } if(NET.role) return;
+  NET.status="連線中⋯"; netUI();
+  try{ await netLib(); }catch(e){ NET.status="連線元件下載失敗,請檢查網路。"; netUI(); return; }
+  const peer=new Peer(undefined,netOpts()); NET.peer=peer;
+  peer.on("open",()=>{ const c=peer.connect(NET_PREFIX+code,{reliable:true,serialization:"json"}); NET.host=c; NET.code=code; netWire(c,true);
+    setTimeout(()=>{ if(!NET.role&&NET.peer===peer){ NET.status="連不上:可能是網路擋住了點對點連線(醫院或公司 Wi‑Fi 常會擋),換成手機網路再試試看。"; peer.destroy(); NET.peer=null; netUI(); } },15000); });
+  peer.on("error",e=>{ if(!NET.role){ peer.destroy(); NET.peer=null; } netErr(e); }); }
+function netWire(c,asGuest){
+  c.on("open",()=>{ if(asGuest){ NET.role="guest"; NET.status=""; NET.tp=false; } NET.conns.set(c.peer,{c}); c.send({t:"hi",name:PLAYER.name,role:PLAYER.role});
+    if(!asGuest){ for(const [k,p] of NET.prof) if(k!==c.peer) c.send({t:"hi",id:k,name:p.name,role:p.role}); if(ORS.sc) netSendOR(ORS.end?"end":"q"); }
+    netUI(); });
+  c.on("data",d=>netRecv(c,d));
+  c.on("close",()=>netDrop(c.peer));
+  c.on("error",()=>netDrop(c.peer)); }
+function netDrop(id){ if(!NET.conns.has(id)) return; NET.conns.delete(id);
+  if(NET.role==="guest"){ toast("👋 和邀請者的連線已中斷"); netLeave(); return; }
+  const w=window.__world; w&&w.netDel&&w.netDel(id); if(NET.prof.has(id)) toast(`👋 ${esc(netName(id))} 離開了你的島`); NET.prof.delete(id); netSend({t:"bye",id}); netUI(); }
+function netLeave(){ const w=window.__world; for(const k of NET.prof.keys()) w&&w.netDel&&w.netDel(k);
+  for(const [,v] of NET.conns){ try{ v.c.close(); }catch(e){} } NET.conns.clear(); NET.prof.clear();
+  const wasGuest=NET.role==="guest"; if(NET.peer){ try{ NET.peer.destroy(); }catch(e){} } Object.assign(NET,{peer:null,role:null,code:null,host:null,status:""});
+  if(wasGuest){ $("orPanel").hidden=true; document.body.classList.remove("or-run"); ORS.gsc=null; orSetTarget({...ORV0},true); w&&w.orReset&&w.orReset(); }
+  netUI(); }
+// 收到對方的資料:只接受已知的類型,文字限制長度,一律當純文字顯示
+function netRecv(c,d){ if(!d||typeof d!=="object"||typeof d.t!=="string") return; const w=window.__world;
+  const fromHost=NET.role==="guest"; const key=fromHost&&d.id?netStr(d.id,80):c.peer;
+  if(NET.role==="host"&&["hi","st","as"].includes(d.t)) netSend({...d,id:c.peer},c.peer);   // 邀請者幫忙轉給其他朋友
+  switch(d.t){
+    case "hi": { const prof={name:netStr(d.name,10).trim(),role:d.role==="SNA"?"SNA":"CRNA"}; const isNew=!NET.prof.has(key); NET.prof.set(key,prof); w&&w.netAdd&&w.netAdd(key,prof);
+      if(isNew) toast(fromHost&&!d.id?`🏝️ 你來到 ${esc(prof.name||"朋友")} 的島了`:`👋 ${esc(prof.name||"朋友")}(${prof.role})來到${NET.role==="host"?"你的":"這座"}島`); netUI(); break; }
+    case "st": if(w&&w.netUpd){ w.netUpd(key,d); if(fromHost&&!d.id&&!NET.tp&&Number.isInteger(d.i)){ NET.tp=true; w.goIsland(Math.max(0,Math.min(6,d.i)),true); } } break;
+    case "bye": if(fromHost){ w&&w.netDel&&w.netDel(key); NET.prof.delete(key); netUI(); } break;
+    case "full": NET.status="這座島已經有 3 位朋友了。"; netLeave(); break;
+    case "as": { const x=netStr(d.x,40); if(NET.role==="host") orAssistAdd(netName(key),x); else toast(`🤝 ${esc(netName(key))}:${esc(x)}`); w&&w.netSay&&w.netSay(key,x); break; }
+    case "or": if(fromHost) orGuest(d); break;
+    case "v": if(fromHost&&Array.isArray(d.V)){ const K=["hr","sbp","dbp","spo2","etco2","rr","temp"], o={}; K.forEach((k,i)=>o[k]=netNum(d.V[i])); o.skin=["normal","pale","cyan","flush"].includes(d.s)?d.s:"normal"; o.alarm=!!d.al; o.shake=!!d.sh; o.rhythm=["sinus","vf","asystole","pea","st"].includes(d.rh)?d.rh:"sinus"; Object.assign(ORS.V,o); Object.assign(ORS.T,o); orPush(); } break;
+    case "fx": if(fromHost&&w){ const fn=d.fn; if(fn==="orCPR") w.orCPR(!!d.a); else if(fn==="orHelp"){ w.orHelp(); orHelpBanner(); } else if(fn==="orShock"){ w.orShock(); orFlash(); } else if(fn==="orHandoff") w.orHandoffFx(); else if(fn==="orReset") w.orReset(); } break;
+    case "pick": if(fromHost) toast(`👩‍⚕️ ${esc(netName(c.peer))} 選了 ${esc(netStr(d.j,2))}`); break;
+  } }
+/* ---------- 手術室:邀請者把狀態傳給朋友;朋友看到同一題,但改成協助與背包 ---------- */
+function netSendOR(ph){ if(NET.role!=="host") return; if(ph==="off"||(!ORS.sc&&ph!=="menu")){ netSend({t:"or",ph:"off"}); return; }
+  netSend({t:"or",ph,i:ORS.idx,node:ORS.node,ord:ORS.order,n:ORS.n,acls:!!ORS.acls,ck:[...(ORS.ck||[])],log:ORS.logK||[],end:ORS.end,miss:ORS.miss||0,ib:ORS.ibOrd||null,ibk:ORS.isbarK,as:(ORS.assist||[]).slice(-12)}); }
+function orAssistAdd(who,x){ if(!ORS.sc) { toast(`🤝 ${esc(who)}:${esc(x)}`); return; } (ORS.assist=ORS.assist||[]).push({who,x}); toast(`🤝 ${esc(who)}:${esc(x)}`);
+  const el=$("orPanel").querySelector(".aslog"); if(el) el.outerHTML=orAssistHTML(); netSendOR(ORS.end?"end":ORS.node?"q":"menu"); }
+function orAssistHTML(end){ const a=(NET.role==="guest"?(NET.or&&NET.or.as):ORS.assist)||[]; if(!a.length) return end?"":`<div class="aslog" hidden></div>`;
+  return `<div class="aslog"><div class="q">🤝 ${end?"團隊協助紀錄":"隊友協助"}</div><ul>${a.slice(end?0:-5).map(r=>`<li><b>${esc(netStr(r.who,10))}</b>${esc(netStr(r.x,40))}</li>`).join("")}</ul></div>`; }
+const ASSIST=[["🙋","我來幫忙壓胸(換手)",1],["⚡","推去顫器過來、貼好貼片",1],["🫁","幫忙 Ambu 通氣",0],["💉","幫忙抽好急救藥物",0],["🩸","打電話聯絡血庫叫血",0],["🧪","幫忙抽血送 ABG",0],["📝","幫忙記錄時間與用藥",0],["📞","幫忙呼叫支援",0]];
+function orGuest(d){ const P=$("orPanel"), w=window.__world; NET.or=d;
+  if(d.ph==="off"){ ORS.gsc=null; P.hidden=true; document.body.classList.remove("or-run"); return; }
+  const c=OR_SCENARIOS[netNum(d.i)|0], host=esc(netName(NET.host&&NET.host.peer)); orOpen();
+  if(d.ph==="menu"||!c){ P.innerHTML=orHead(`👥 ${host} 的模擬開刀房`)+`<div class="cols"><div><p class="story">${host} 正在挑選情境⋯⋯</p><p class="pt">情境由邀請你的人開始與作答;你可以在旁邊協助,或從背包拿東西出來用。</p></div><div></div></div>`; orWire(P); return; }
+  ORS.gsc=c; const nodes={...c.nodes,...aclsNodes(c)}, nd=nodes[d.node];
+  const lock=`<p class="lock">🔒 由 ${host} 作答;你可以協助與拿背包的東西。</p>`;
+  const opts=(list,ord)=>(Array.isArray(ord)?ord:list.map((_,i)=>i)).filter(k=>list[k]).map((k,j)=>`<button type="button" class="opt" disabled><b>${"ABCD"[j]}</b><span>${list[k].t}</span></button>`).join("");
+  let left="", right="";
+  if(d.ph==="q"&&nd){ left=`<p class="pt">👤 ${c.patient}</p><p class="story">${nd.story}</p><div class="vit">${orVitHTML()}</div>${orAssistHTML()}`; right=`<div class="q">${nd.q}</div>`+opts(nd.options,d.ord)+lock+orHelpPad(d.acls); }
+  else if(d.ph==="go"){ left=`<p class="pt">👤 ${c.patient}</p>`; right=`<p class="story">病人穩定了。${host} 和巡迴護理師一起把病人推到恢復室,準備交班⋯⋯</p>`; }
+  else if(d.ph==="ib"){ left=`<p class="story">到恢復室了。恢復室護理師說:「好,請交班。」</p><div class="vit">${orVitHTML()}</div>`; right=`<div class="q">哪一個交班最完整、最正確?</div>`+opts(orIsbarOpts(c),d.ib)+lock; }
+  else if(d.ph==="end"){ const win=d.end==="win", ck=new Set(d.ck||[]), got=c.checklist.filter((_,i)=>ck.has(i)).length;
+    const steps=(d.log||[]).map(([nid,k])=>{ const o=nodes[nid]&&nodes[nid].options[k]; return o?`<li class="${o.ok||o.rescue?"ok":"no"}"><b>${o.ok?"✅ ":o.rescue?"🩹 ":o.to==="dead"?"💔 ":"⚠️ "}${o.t}</b><span>${o.fb||""}</span></li>`:""; }).join("");
+    left=`<div class="end ${win?"ok":"dead"}"><b>${win?"🎉 病人穩定了":"💀 病人死亡"}</b><div style="font-size:13px;opacity:.85">診斷:${c.tag||""}</div>${win?c.win:c.dead}</div>`;
+    right=`<div class="q">OSCE 評分表:做到 ${got} / ${c.checklist.length} 項</div><ul class="ck">${c.checklist.map((t,i)=>`<li class="${ck.has(i)?"hit":"miss"}"><span>${ck.has(i)?"✅":"⬜"}</span><span>${t}</span></li>`).join("")}</ul>${steps?`<div class="q">逐步檢討</div><ol class="rev">${steps}</ol>`:""}${orAssistHTML(true)}`; }
+  P.innerHTML=orHead(`👥 ${host} 主持 · ${d.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${netNum(d.n)|0} · ${c.title}`)+`<div class="cols"><div>${left}</div><div>${right}</div></div>`;
+  orWire(P); orWireHelp(P); }
+function orHelpPad(acls){ const bag=Object.keys(BAGD).filter(n=>BAGD[n]>0&&COL_BY[n]&&COL_BY[n].med);
+  return `<div class="helppad"><div class="q">🤝 我來幫忙</div><div class="chips">${ASSIST.filter(a=>acls||!a[2]).map(([ic,t])=>`<button type="button" class="chip" data-as="${esc(t)}">${ic} ${t}</button>`).join("")}</div>
+    <div class="q">🎒 從背包拿出來用</div><div class="chips">${bag.length?bag.map(n=>`<button type="button" class="chip bag" data-bag="${esc(n)}">${COL_BY[n].ic} ${esc(n)} <small>×${BAGD[n]}</small></button>`).join(""):`<p class="pt">背包裡還沒有藥物、管路或血品;下班去釣魚、浮潛、開漂流瓶可以收集。</p>`}</div></div>`; }
+function orWireHelp(P){ P.querySelectorAll("[data-as],[data-bag]").forEach(b=>b.onclick=()=>{ const now=performance.now(); if(now-NET.asT<1200) return; NET.asT=now;
+    let x; if(b.dataset.bag){ const n=b.dataset.bag; if(!(BAGD[n]>0)) return; BAGD[n]--; if(!BAGD[n]) delete BAGD[n]; try{ localStorage.setItem("island-bag",JSON.stringify(BAGD)); }catch(e){}
+      x=COL_BY[n].med==="card"?`請 ${n} 來幫忙`:`拿出 ${n}`; const pad=P.querySelector(".helppad"); if(pad) pad.outerHTML=orHelpPad(NET.or&&NET.or.acls); orWireHelp(P); }
+    else x=b.dataset.as;
+    netSend({t:"as",x}); toast(`🤝 你:${esc(x)}`); const w=window.__world; w&&w.netSay&&w.netSay("me",x); }); }
+/* ---------- 連線面板 ---------- */
+function netUI(){ const box=$("netbar"); if(!box) return; const tg=$("netToggle"); if(tg) tg.textContent=NET.role?`👥 連線中 ${NET.prof.size+1}`:"👥 連線";
+  const link=NET.code?location.origin+location.pathname+"?join="+NET.code:"", people=[...NET.prof.values()].map(p=>`<li><i class="${p.role==="SNA"?"sna":"crna"}">${p.role}</i>${esc(p.name||"朋友")}</li>`).join("");
+  const st=NET.status?`<p class="nst">${esc(NET.status)}</p>`:"";
+  if(NET.role==="host") box.innerHTML=`<span class="lbl">把房號或連結給朋友,對方打開就會來到你的島</span><div class="ncode">${NET.code}</div>
+    <div class="nrow"><button type="button" id="netCopy">📋 複製邀請連結</button>${navigator.share?`<button type="button" id="netShare">📤 分享</button>`:""}<button type="button" class="sec" id="netEnd">結束連線</button></div>
+    <ul class="nppl">${people||`<li class="wait">等待朋友加入⋯(最多 ${NET_MAX} 位)</li>`}</ul>${st}`;
+  else if(NET.role==="guest") box.innerHTML=`<span class="lbl">你在朋友的島上(房號 ${NET.code})</span><ul class="nppl">${people}</ul><div class="nrow"><button type="button" class="sec" id="netEnd">離開</button></div>${st}`;
+  else box.innerHTML=`<span class="lbl">和朋友一起玩:一起下班、一起進模擬開刀房</span>
+    <div class="nrow"><button type="button" id="netHost">🔗 邀請朋友來我的島</button></div>
+    <span class="lbl">或輸入朋友給你的房號</span><div class="nrow"><input id="netCode" maxlength="6" placeholder="6 碼房號" autocapitalize="characters" autocomplete="off"><button type="button" id="netGo">加入</button></div>
+    ${st}<p class="nnote">使用 PeerJS 免費公共伺服器配對,之後資料直接在兩台裝置之間傳送。手術室由邀請者作答,朋友可以協助並使用背包裡的東西。</p>`;
+  const on=(id,f)=>{ const e=$(id); if(e) e.onclick=f; };
+  on("netHost",netHost); on("netGo",()=>netJoin(($("netCode")||{}).value)); on("netEnd",netLeave);
+  on("netCopy",()=>{ try{ navigator.clipboard.writeText(link).then(()=>toast("📋 已複製邀請連結")); }catch(e){ prompt("邀請連結",link); } });
+  on("netShare",()=>{ navigator.share({title:"麻醉誘島",text:`來我的麻醉誘島一起玩!房號 ${NET.code}`,url:link}).catch(()=>{}); });
+  const ci=$("netCode"); if(ci) ci.onkeydown=e=>{ if(e.key==="Enter") netJoin(ci.value); }; }
+setInterval(()=>{ if(!NET.role||!NET.conns.size) return; const w=window.__world; if(!w||!w.netSelf) return; const d=w.netSelf(); d.t="st"; netSend(d); },100);
+{ const q=new URLSearchParams(location.search), j=q.get("join"); if(j){ NET.pendingJoin=j; q.delete("join"); try{ history.replaceState(null,"",location.pathname+(q.toString()?"?"+q:"")+location.hash); }catch(e){} } }
+window.addEventListener("beforeunload",()=>{ if(NET.role) netSend({t:"bye"}); });
 
 /* ---------- question modal ---------- */
 function openQ(r,list){
@@ -1266,7 +1383,7 @@ async function buildWorld(){
 
   /* ---------- nurse anesthetist ---------- */
   const NS=1.35; const nurse=buildNurse(); nurse.userData.nurseHit=true; nurse.scale.setScalar(NS); scene.add(nurse);
-  function buildNurse(){
+  function buildNurse(prof){
     const n=new THREE.Group(); const SKIN=0xFFDCC8, SCRUB=0x7EC4CF, SCRUB2=0x63B0BD, CAP=0x5DAE8B;
     const body=new THREE.Group(); n.add(body);
     const cap=(r,len,c)=>new THREE.Mesh(new THREE.CapsuleGeometry(r,len,6,14),M(c));
@@ -1281,7 +1398,7 @@ async function buildWorld(){
     const pocket=new THREE.Mesh(new RoundedBoxGeometry(.3,.26,.04,2,.03),M(SCRUB2)); pocket.position.set(-.3,1.55,.37); body.add(pocket);
     const pen=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.3,6),M(0xE46F8E)); pen.position.set(-.36,1.66,.39); body.add(pen);
     // badge
-    const badge=new THREE.Mesh(new THREE.PlaneGeometry(.34,.2),new THREE.MeshBasicMaterial({map:tex(256,150,drawBadge)})); badge.name="badge";   // 名牌:上面是自訂名字,下面是身份 SNA / CRNA
+    const badge=new THREE.Mesh(new THREE.PlaneGeometry(.34,.2),new THREE.MeshBasicMaterial({map:tex(256,150,(g,w,h)=>drawBadge(g,w,h,prof))})); badge.name="badge";   // 名牌:上面是自訂名字,下面是身份 SNA / CRNA
     badge.position.set(-.28,1.32,.37); body.add(badge);
     // neck + head
     const neck=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.22,12),M(SKIN)); neck.position.y=2.18; body.add(neck);
@@ -1439,7 +1556,8 @@ async function buildWorld(){
     const lei=new THREE.Group(); lei.visible=false; body.add(lei);
     { const cols=[0xFF7A8A,0xFFD94A,0xFFFFFF,0xFFB347,0xB57EDC]; for(let i=0;i<18;i++){ const a=i/18*Math.PI*2; const f=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),M(cols[i%5],{roughness:.6})); f.position.set(Math.cos(a)*.42,0,Math.sin(a)*.36); lei.add(f); }
       lei.position.set(0,1.98,.06); lei.rotation.x=.38; }
-    function setOutfit(k){ const sw=k==="swim", hw=k==="hawaii", sc=!sw&&!hw;
+    let outfitK="scrub";
+    function setOutfit(k){ outfitK=k; const sw=k==="swim", hw=k==="hawaii", sc=!sw&&!hw;
       capAll.visible=sc; steth.visible=sc; badge.visible=sc; pen.visible=sc; pocket.visible=sc; vneck.visible=!sw;
       torso.material=sw?swimM:hw?floralM:scrubM; [armR.up,armL.up].forEach(u=>u.material=sw?skinM:hw?floralM:scrubM);
       legMeshes.forEach(l=>l.material=sc?scrub2M:skinM);
@@ -1447,7 +1565,7 @@ async function buildWorld(){
       feet.forEach(f=>f.visible=sw); trunks.forEach(t=>t.visible=sw); shorts.forEach(t=>t.visible=hw);
       swimCap.visible=sw; hat.visible=hw; lei.visible=hw; ETT.visible=sc; TW.visible=sc; }
     const setCap=(g)=>{ capM.color.set(g?0xE9C25A:CAP); capM.metalness=g?.7:0; capM.roughness=g?.25:.9; capM.needsUpdate=true; };
-    n.userData={body,legs,armR,armL,head,umb,ETT,TW,setShades:(v)=>{ shades.visible=v; },setOutfit,setFace,faceTick,setCap,get face(){ return faceEx; }};
+    n.userData={body,legs,armR,armL,head,umb,ETT,TW,setShades:(v)=>{ shades.visible=v; },setOutfit,setFace,faceTick,setCap,get face(){ return faceEx; },get outfit(){ return outfitK; }};
     return n;
   }
 
@@ -3147,7 +3265,7 @@ async function buildWorld(){
         ud.legs[0].rotation.x=-Math.max(0,Math.sin(ph))*.7; ud.legs[1].rotation.x=-Math.max(0,-Math.sin(ph))*.7; }
       else { ud.body.position.y=0; ud.body.rotation.set(0,0,0); ud.legs.forEach(l=>l.rotation.x=0); if(!holdIV&&!OFF){ ud.armR.sh.rotation.set(-.95,0,.12); ud.armR.fore.rotation.x=-.75; ud.armL.sh.rotation.set(-.85,0,-.12); ud.armL.fore.rotation.x=-.85; } } }
     for(let i=NOTES.length-1;i>=0;i--){ const n=NOTES[i]; n.userData.t+=rdt; n.position.y+=rdt*1.4; n.position.x+=Math.sin(n.userData.t*4)*rdt*.6; n.material.opacity=Math.max(0,1-n.userData.t/2.2); if(n.userData.t>2.2){ scene.remove(n); NOTES.splice(i,1); } }
-    OR.tick(rdt,tt); idleTick(rdt,tt); BURIED.update(tt); DRIFT.update(tt); TURTLES.update(rdt,tt); boatTick(rdt,tt); carryTick(rdt,tt);
+    OR.tick(rdt,tt); netTick(rdt); idleTick(rdt,tt); BURIED.update(tt); DRIFT.update(tt); TURTLES.update(rdt,tt); boatTick(rdt,tt); carryTick(rdt,tt);
     { const want=BOAT?1.0:inHut&&!OFF?1.05:(ISL[3].room&&ISL[3].room.near(nurse.position.x,nurse.position.z)&&!OFF)?.95:NS; const s=nurse.scale.x+(want-nurse.scale.x)*Math.min(1,dt*2.2); nurse.scale.setScalar(s); }
     { const u=ud.umb; const open=ENV.raining()&&!inHut&&!OFF&&!LOUNGE; const cs=u.scale.x+((open?1:0)-u.scale.x)*Math.min(1,dt*5); u.scale.set(cs,cs,cs); u.visible=cs>.02; }
     LIFE.update(dt,tt); SOUND.update(dt);
@@ -3178,9 +3296,41 @@ async function buildWorld(){
     if(focus){ const d=D3[focus]; const a=camera.position, b=new THREE.Vector3(d.c.x,TOP+3,d.c.z), p=new THREE.Vector3(HUT.pos.x,TOP+4,HUT.pos.z); const ab=b.clone().sub(a); const k=Math.max(0,Math.min(1,p.clone().sub(a).dot(ab)/ab.lengthSq())); HUT.g.visible=a.clone().addScaledVector(ab,k).distanceTo(p)>7.5; } else HUT.g.visible=true;
     renderer.render(scene,camera); placeLabels();
   });
+  /* ---------- 連線:朋友的小麻(依對方傳來的位置、姿勢、服裝、表情畫出來,頭上有名字與正在做的事) ---------- */
+  const REMOTE=new Map(), _rq=new THREE.Quaternion(), _rv=new THREE.Vector3();
+  function remoteLab(R){ R.lab.querySelector("b").textContent=(R.prof.name||"朋友")+" · "+R.prof.role; R.lab.querySelector("span").textContent=R.sayT>0?"💬 "+R.say:(R.st&&R.st.a)||""; R.lab.classList.toggle("sna",R.prof.role==="SNA"); }
+  function netAdd(id,prof){ let R=REMOTE.get(id);
+    if(R){ R.prof=prof; const b=R.g.getObjectByName("badge"); if(b){ b.material.map=tex(256,150,(g,w,h)=>drawBadge(g,w,h,prof)); b.material.needsUpdate=true; } remoteLab(R); return; }
+    const g=buildNurse(prof); g.scale.setScalar(NS); g.visible=false; shadowy(g); scene.add(g); g.userData.ETT.visible=false; g.userData.TW.visible=false;
+    const lab=document.createElement("div"); lab.className="plab off"; lab.innerHTML="<b></b><span></span>"; $("labels").appendChild(lab);
+    R={g,prof,lab,st:null,o:"scrub",f:"smile",say:"",sayT:0}; REMOTE.set(id,R); remoteLab(R); }
+  function netDel(id){ const R=REMOTE.get(id); if(!R) return; scene.remove(R.g); R.lab.remove(); REMOTE.delete(id); }
+  function netUpd(id,d){ const R=REMOTE.get(id); if(!R) return; const A=(x,n)=>Array.isArray(x)&&x.length===n&&x.every(v=>Number.isFinite(+v))?x.map(Number):null;
+    const st={p:A(d.p,3),q:A(d.q,4),s:Number.isFinite(+d.s)?Math.max(.5,Math.min(2,+d.s)):NS,b:A(d.b,4),l:A(d.l,4),ar:A(d.ar,4),al:A(d.al,4),h:Number.isFinite(+d.h)?+d.h:0,
+      o:typeof d.o==="string"?d.o.slice(0,10):"scrub",f:typeof d.f==="string"?d.f.slice(0,12):"smile",a:typeof d.a==="string"?d.a.slice(0,20):""};
+    if(!st.p||!st.q) return; const first=!R.st; R.st=st;
+    if(first){ R.g.position.set(...st.p); R.g.quaternion.set(...st.q).normalize(); R.g.visible=true; R.lab.classList.remove("off"); }
+    if(st.o!==R.o){ R.o=st.o; R.g.userData.setOutfit(st.o); R.g.userData.ETT.visible=false; R.g.userData.TW.visible=false; }
+    if(st.f!==R.f){ R.f=st.f; R.g.userData.setFace(st.f); }
+    remoteLab(R); }
+  function netSay(id,x){ const R=REMOTE.get(id); if(!R) return; R.say=x; R.sayT=4; remoteLab(R); }
+  function netTick(dt){ if(!REMOTE.size) return; const k=Math.min(1,dt*10), L=(a,b)=>a+(b-a)*k, w=stage.clientWidth, h=stage.clientHeight;
+    for(const R of REMOTE.values()){ const S=R.st; if(!S) continue; const g=R.g, u=g.userData;
+      g.position.set(L(g.position.x,S.p[0]),L(g.position.y,S.p[1]),L(g.position.z,S.p[2])); g.quaternion.slerp(_rq.set(...S.q).normalize(),k); g.scale.setScalar(L(g.scale.x,S.s));
+      if(S.b){ u.body.position.y=L(u.body.position.y,S.b[0]); u.body.rotation.set(L(u.body.rotation.x,S.b[1]),L(u.body.rotation.y,S.b[2]),L(u.body.rotation.z,S.b[3])); }
+      if(S.l) u.legs.forEach((lg,i)=>{ lg.rotation.x=L(lg.rotation.x,S.l[i*2]); lg.rotation.z=L(lg.rotation.z,S.l[i*2+1]); });
+      [[u.armR,S.ar],[u.armL,S.al]].forEach(([a,v])=>{ if(!v) return; a.sh.rotation.set(L(a.sh.rotation.x,v[0]),L(a.sh.rotation.y,v[1]),L(a.sh.rotation.z,v[2])); a.fore.rotation.x=L(a.fore.rotation.x,v[3]); });
+      u.head.rotation.y=L(u.head.rotation.y,S.h); u.faceTick(dt);
+      if(R.sayT>0){ R.sayT-=dt; if(R.sayT<=0) remoteLab(R); }
+      _rv.copy(g.position); _rv.y+=4.9*g.scale.x/NS; _rv.project(camera);
+      R.lab.style.transform=`translate(${(_rv.x*.5+.5)*w}px,${(-_rv.y*.5+.5)*h}px) translate(-50%,-100%)`; R.lab.classList.toggle("off",_rv.z>1||!g.visible); } }
+  function netSelf(){ const ud=nurse.userData, b=ud.body, r=(v)=>Math.round(v*1000)/1000, q=nurse.quaternion, p=nurse.position, arm=(a)=>[a.sh.rotation.x,a.sh.rotation.y,a.sh.rotation.z,a.fore.rotation.x].map(r);
+    const a=FISH?"🎣 釣魚中":OFF?({free:SNORKEL?"🤿 浮潛中":"🏊 游泳中",swim:"🐬 騎海豚",hawaii:"⛵ 開帆船",surf:"🏄 衝浪中"}[OFF.kind]||"🏖️ 下班中"):danceT>0?"💃 跳舞中":ISL[3].room.inside(p)?"🏥 模擬開刀房":bookEl?"📖 看書中":LOUNGE?"🏖️ 躺椅休息":"";
+    return {p:[r(p.x),r(p.y),r(p.z)],q:[r(q.x),r(q.y),r(q.z),r(q.w)],s:r(nurse.scale.x),b:[r(b.position.y),r(b.rotation.x),r(b.rotation.y),r(b.rotation.z)],
+      l:[ud.legs[0].rotation.x,ud.legs[0].rotation.z,ud.legs[1].rotation.x,ud.legs[1].rotation.z].map(r),ar:arm(ud.armR),al:arm(ud.armL),h:r(ud.head.rotation.y),o:ud.outfit,f:ud.face,a,i:islandAt(p).i}; }
   return {goDistrict,focus:()=>focus,pickBook,closeBook:()=>{ openId=null; },
-    orSet:(v)=>OR.set(v), orGet:()=>OR.get(), orHelp:()=>OR.help(), orCPR:(on)=>OR.cpr(on), orShock:()=>OR.shock(), orReset:()=>OR.reset(),
-    orHandoff:(cb)=>{ let a=false,b=false; const fin=()=>{ if(a&&b) cb&&cb(); };
+    orSet:(v)=>OR.set(v), orGet:()=>OR.get(), orHelp:()=>{ OR.help(); netFx("orHelp"); }, orCPR:(on)=>{ OR.cpr(on); netFx("orCPR",!!on); }, orShock:()=>{ OR.shock(); netFx("orShock"); }, orReset:()=>{ OR.reset(); netFx("orReset"); }, orHandoffFx:()=>OR.handoff(()=>{}), netAdd, netDel, netUpd, netSay, netSelf,
+    orHandoff:(cb)=>{ netFx("orHandoff"); let a=false,b=false; const fin=()=>{ if(a&&b) cb&&cb(); };
       OR.handoff(()=>{ a=true; fin(); }); const dest=OR.toW(-13.4,3.2); faceCamera=false; route(pathTo(dest),()=>{ mode="idle"; faceCamera=true; b=true; fin(); });
       const tgt=OR.toW(-9,2); tgt.y=TOP; const pos=OR.toW(-6,24); pos.y=TOP+26; tweenCam(pos,tgt,1600); }, atOR:()=>viewIsl===3, inOR:()=>ISL[3].room.inside(nurse.position),
     _vent:()=>({ph:+OR.vent.ph.toFixed(2), sy:OR.vent.b?+OR.vent.b.scale.y.toFixed(2):null}),
