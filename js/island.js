@@ -384,14 +384,15 @@ async function netHost(){ if(NET.role) return; NET.status="準備房間中⋯"; 
   const peer=new Peer(NET_PREFIX+code,netOpts()); NET.peer=peer;
   peer.on("open",()=>{ NET.role="host"; NET.code=code; NET.status=""; netUI(); });
   peer.on("connection",c=>{ if(NET.conns.size>=NET_MAX){ c.on("open",()=>{ try{ c.send({t:"full"}); }catch(e){} setTimeout(()=>c.close(),400); }); return; } netWire(c); });
-  peer.on("error",e=>{ if(e&&e.type==="unavailable-id"){ peer.destroy(); NET.peer=null; netHost(); return; } if(!NET.role){ peer.destroy(); NET.peer=null; } netErr(e); });
+  peer.on("error",e=>{ if(e&&e.type==="unavailable-id"){ peer.destroy(); NET.peer=null; netHost(); return; } if(NET.role==="host"&&e&&e.type==="peer-unavailable") return;   // 朋友那邊連線失敗,不影響房間
+    if(!NET.role){ peer.destroy(); NET.peer=null; } netErr(e); });
   peer.on("disconnected",()=>{ try{ peer.reconnect(); }catch(e){} }); }
 async function netJoin(code){ code=netStr(code,12).toUpperCase().replace(/[^A-Z0-9]/g,""); if(code.length!==6){ NET.status="房號是 6 個英文字母或數字。"; netUI(); return; } if(NET.role) return;
   NET.status="連線中⋯"; netUI();
   try{ await netLib(); }catch(e){ NET.status="連線元件下載失敗,請檢查網路。"; netUI(); return; }
   const peer=new Peer(undefined,netOpts()); NET.peer=peer;
   peer.on("open",()=>{ const c=peer.connect(NET_PREFIX+code,{reliable:true,serialization:"json"}); NET.host=c; NET.code=code; netWire(c,true);
-    setTimeout(()=>{ if(!NET.role&&NET.peer===peer){ NET.status="連不上:可能是網路擋住了點對點連線(醫院或公司 Wi‑Fi 常會擋),換成手機網路再試試看。"; peer.destroy(); NET.peer=null; netUI(); } },15000); });
+    setTimeout(()=>{ if(!NET.role&&NET.peer===peer){ NET.status="連不上:可能是網路擋住了點對點連線(醫院或公司 Wi‑Fi 常會擋),換成手機網路再試試看。"; peer.destroy(); NET.peer=null; netUI(); } },30000); });
   peer.on("error",e=>{ if(!NET.role){ peer.destroy(); NET.peer=null; } netErr(e); }); }
 function netWire(c,asGuest){
   c.on("open",()=>{ if(asGuest){ NET.role="guest"; NET.status=""; NET.tp=false; } NET.conns.set(c.peer,{c}); c.send({t:"hi",name:PLAYER.name,role:PLAYER.role});
