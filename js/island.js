@@ -796,7 +796,8 @@ async function buildWorld(){
         [[0x2FA84F,-.2],[0xF2C318,0],[0x3C78D8,.2]].forEach(([col,o])=>{ const s0=new THREE.Vector3(o,3.6,.42).applyMatrix4(pg.matrix), s1=new THREE.Vector3(am.x+o*.3,2.4,am.z+.1);
           const h=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([s0,s0.clone().add(new THREE.Vector3(0,-1.3,0)),new THREE.Vector3((s0.x+s1.x)/2,1.0,(s0.z+s1.z)/2),s1]),24,.04,6,false),M(col,{roughness:.5})); g.add(h); }); }
       // 麻醉推車(照片):灰褐色抽屜櫃配湖水綠飾條、上層湖水綠托盤、U 型把手架與分格收納盒、側掛黃色針頭收集盒與藍蓋桶、左側收納籃
-      { const cg=new THREE.Group(); cg.position.set(-8.3,0,1.2); cg.rotation.y=.7; g.add(cg);
+      // 推車放在麻醉護理師站位(床頭)的左後方、伸手就拿得到,抽屜正面朝向站位
+      { const cg=new THREE.Group(); cg.position.set(-3.2,0,6.4); cg.rotation.y=Math.atan2(-1.7+3.2,4.4-6.4); g.add(cg);
         const taupe=M(0x9E968D,{roughness:.6}), teal=M(0x7ED4CC,{roughness:.5}), frameM=M(0xCFC7BC,{roughness:.5});
         const body=new THREE.Mesh(new RoundedBoxGeometry(1.7,2.0,1.15,2,.06),taupe); body.position.y=1.25; cg.add(body);
         const ft=tex(340,400,(c,w,h)=>{ c.fillStyle="#A59D93"; c.fillRect(0,0,w,h); const H=[54,54,54,40,56,40,56,46]; let y=0; const labs={3:"Endo/輸血set/3way lock/T-connect/IV延長線/Nasal airway",5:"紗繃、宜拉膠、3M膠帶 / pump bag / 延長線"};
@@ -827,7 +828,7 @@ async function buildWorld(){
         const u3=new THREE.Mesh(new RoundedBoxGeometry(1.1,.45,.8,2,.05),M(0x3B6FAE,{roughness:.4})); u3.position.y=.68; eg.add(u3);
         const dsp=new THREE.Mesh(new THREE.PlaneGeometry(.4,.2),new THREE.MeshBasicMaterial({color:0x7FE0A0})); dsp.position.set(-.2,1.75,.41); eg.add(dsp); }
       // 點滴架(掛兩袋輸液)、紅色踢桶套粉紅色垃圾袋、綠色踏階兩個
-      { const ip=new THREE.Group(); ip.position.set(-3.6,0,6.2); g.add(ip);
+      { const ip=new THREE.Group(); ip.position.set(3.6,0,6.4); g.add(ip);
         for(let i=0;i<5;i++){ const a=i/5*Math.PI*2, lg=new THREE.Mesh(new THREE.BoxGeometry(.7,.06,.08),M(0x2A3038)); lg.position.set(Math.cos(a)*.35,.12,Math.sin(a)*.35); lg.rotation.y=-a; ip.add(lg); }
         const po=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,4.4,8),ss); po.position.y=2.3; ip.add(po);
         const hk=new THREE.Mesh(new THREE.BoxGeometry(.9,.04,.04),ss); hk.position.y=4.45; ip.add(hk);
@@ -922,7 +923,7 @@ async function buildWorld(){
       bed.position.set(PX-2.3,0,-1.6); g.add(bed); }
     const pacuNurse=mkStaff({scrub:0x7FB2D8,cap:0x3E7FA8,hands:"type"}); pacuNurse.position.set(-13.6,.12,-1.5); pacuNurse.rotation.y=-Math.PI/2; g.add(pacuNurse);
     /* ---------- 呼救:麻醉主治醫師與三位麻醉專科護理師從門口衝進來 ---------- */
-    const HELP=[{o:{scrub:0x2E5E9E,gown:0xF7F7F4,cap:0x2E5E9E,hands:"front"},to:[-3.0,6.4]},{o:{scrub:0x5FA98F,cap:0x3F8F72},to:[-4.8,7.2]},{o:{scrub:0x5FA98F,cap:0xE48CA8},to:[-7.0,6.6]},{o:{scrub:0x5FA98F,cap:0xF2B544},to:[-8.4,4.8]}]
+    const HELP=[{o:{scrub:0x2E5E9E,gown:0xF7F7F4,cap:0x2E5E9E,hands:"front"},to:[-1.4,7.4]},{o:{scrub:0x5FA98F,cap:0x3F8F72},to:[-5.4,7.4]},{o:{scrub:0x5FA98F,cap:0xE48CA8},to:[-7.0,6.6]},{o:{scrub:0x5FA98F,cap:0xF2B544},to:[-8.4,4.8]}]
       .map(h=>{ const p=mkStaff(h.o); p.visible=false; g.add(p); return {p,to:h.to,t:0}; });
     let helpOn=false;
     function help(){ if(helpOn) return; helpOn=true; HELP.forEach((h,i)=>{ h.p.visible=true; h.p.position.set(0,.12,D/2+3+i*1.6); h.t=-i*.35; }); }
