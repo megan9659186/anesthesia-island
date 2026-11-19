@@ -7,6 +7,7 @@
 //   v 是該狀況的生命徵象:hr 心跳、sbp/dbp 血壓、spo2、etco2、rr、temp、
 //     skin(normal/pale/cyan/flush)、alarm、shake、rhythm(sinus/vf/asystole/pea/st)
 //   ck 是這個選項拿到的 OSCE 評分項目(對應 checklist 的編號,從 0 開始)
+//   ecg:{t, lead, mm?, pvc?, hr?} 這個狀況要考心電圖判讀時,情境面板會畫出心電圖(種類見 js/island.js 的 ecgSVG 說明;心跳停止會自動畫)
 //   acls:{rhythm:"vf"|"pea", fix:"處理這題可逆原因的做法", epi?, aa?, peds?}
 //   use:[{n:"收集冊物品名稱", t, to, ok/rescue, ck, fb}] 放在狀況裡:小麻收集冊(island-bag)裡有這個東西時,
 //     拿出來用就會帶到 to 那個狀況(用掉就少一個);沒有的話只能從四個選項裡選。n 要和 island.js 的 COLLECT 名稱一樣。
@@ -49,6 +50,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d0:{ story:"15 分鐘後:EtCO₂ 74 mmHg,體溫 38.9°C,監視器出現頻發的心室早期收縮,外科說肚子很硬。",
       v:{hr:142,sbp:150,dbp:90,spo2:95,etco2:74,rr:12,temp:38.9,skin:"flush",alarm:true},
+      ecg:{t:"pvc",lead:"II"},
       q:"現在該怎麼做?",
       options:[
         {t:"停 sevoflurane、100% O₂ 過度換氣、呼救;dantrolene 2.5 mg/kg 靜脈給予",rescue:true,to:"s2",ck:[1,2,3],fb:"晚了,但方向對了:停掉誘發藥物、純氧過度換氣、盡快給 dantrolene。"},
@@ -58,6 +60,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d1a:{ story:"5 分鐘後:EtCO₂ 80 mmHg,體溫 39.4°C,尿袋裡的尿變成可樂色,出現頻發的心室早期收縮。",
       v:{hr:146,sbp:152,dbp:90,spo2:94,etco2:80,rr:24,temp:39.4,skin:"flush",alarm:true},
+      ecg:{t:"pvc",lead:"II"},
       q:"現在該怎麼做?",
       options:[
         {t:"停 sevoflurane、100% O₂ 過度換氣、呼救;dantrolene 2.5 mg/kg 靜脈給予",rescue:true,to:"s2",ck:[1,2,3],fb:"晚了,但方向對了。"},
@@ -67,6 +70,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d1c:{ story:"加深麻醉後:體溫 39.8°C、全身肌肉僵硬,EtCO₂ 85 mmHg。心電圖 T 波變高變尖、QRS 變寬。",
       v:{hr:136,sbp:96,dbp:54,spo2:94,etco2:85,rr:12,temp:39.8,skin:"flush",alarm:true,shake:true},
+      ecg:{t:"peakedT",lead:"II"},
       q:"現在該怎麼做?",
       options:[
         {t:"給 calcium 處理高血鉀,其餘維持原本的麻醉",to:"cpr",fb:"只處理高血鉀,揮發性麻醉劑還開著、也沒有 dantrolene,病人心室顫動。"},
@@ -182,6 +186,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     dB:{ story:"抽搐停了,但血壓 62/30 mmHg、心跳 52 次/分,心電圖 QRS 明顯變寬。",
       v:{hr:52,sbp:62,dbp:30,spo2:90,etco2:28,rr:6,skin:"pale",alarm:true},
+      ecg:{t:"wide",lead:"II"},
       q:"現在該怎麼做?",
       options:[
         {t:"給氧並協助通氣;20% 脂肪乳劑 1.5 mL/kg 推注後持續輸注;需要升壓時用小劑量 epinephrine",rescue:true,to:"s2",ck:[2,4,5],fb:"正確。心血管毒性出現時,脂肪乳劑是關鍵治療。"},
@@ -191,6 +196,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     dC:{ story:"抽搐持續 3 分鐘:SpO₂ 72%,嘴唇發紺,監視器出現一串心室頻脈。",
       v:{hr:156,sbp:84,dbp:46,spo2:72,etco2:20,rr:4,skin:"cyan",alarm:true,shake:true},
+      ecg:{t:"vt",lead:"II",hr:110},
       q:"現在該怎麼做?",
       options:[
         {t:"給 lidocaine 治療心室頻脈",to:"cpr",fb:"Lidocaine 是局部麻醉藥,會加重毒性,心律惡化成心室顫動。"},
@@ -200,6 +206,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     dD:{ story:"Phenytoin 還在滴,抽搐已經持續 5 分鐘:SpO₂ 78%、心跳 44 次/分、QRS 變寬。",
       v:{hr:44,sbp:78,dbp:40,spo2:78,etco2:22,rr:4,skin:"cyan",alarm:true,shake:true},
+      ecg:{t:"wide",lead:"II"},
       q:"現在該怎麼做?",
       options:[
         {t:"繼續等 phenytoin 起效",to:"cpr",fb:"缺氧與酸中毒持續加重心臟毒性,心跳越來越慢,最後停止。"},
@@ -209,6 +216,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     s2:{ story:"病人已經給氧通氣、抽搐停止,脂肪乳劑送到了。但心跳 40 次/分、QRS 很寬,血壓 70/40 mmHg。",
       v:{hr:40,sbp:70,dbp:40,spo2:95,etco2:30,rr:12,skin:"pale",alarm:true},
+      ecg:{t:"wide",lead:"II"},
       q:"脂肪乳劑與用藥,何者正確?",
       options:[
         {t:"照一般流程:epinephrine 1 mg 反覆給,再加 vasopressin",to:"cpr",fb:"這種中毒的急救和一般流程不同:大劑量 epinephrine 與 vasopressin 會讓預後變差,病人心室顫動。"},
@@ -383,6 +391,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d3:{ story:"利尿後:動脈壓 54/30 mmHg、心跳 136,SpO₂ 84%。",
       v:{hr:136,sbp:54,dbp:30,spo2:84,etco2:16,rr:12,skin:"pale",alarm:true},
+      ecg:{t:"wide",lead:"II"},
       q:"現在該怎麼做?",
       options:[
         {t:"100% O₂,快速輸液補回前負荷,epinephrine 靜脈滴定支持右心,告知外科",rescue:true,to:"s2",ck:[1,2,3,4],fb:"回到正確方向。"},
@@ -418,6 +427,7 @@ window.ISLAND_SCENARIOS = [
   nodes:{
     s1:{ story:"剛劃刀不久。心跳 118 次/分、血壓 172/98 mmHg,V5 導程 ST 段水平下降 2 mm,和誘導前不同。",
       v:{hr:118,sbp:172,dbp:98,spo2:99,etco2:35,rr:12,skin:"normal",alarm:true,rhythm:"st"},
+      ecg:{t:"stdep",lead:"V5",mm:2},
       q:"最適當的處置是?",
       options:[
         {t:"加深麻醉與止痛控制交感反應;esmolol 小劑量滴定降心跳,維持舒張壓;確認氧合與血紅素;印 12 導程比較",ok:true,to:"s2",ck:[0,1,2,3],fb:"正確。心搏過速縮短舒張期、增加耗氧,是麻醉中缺血最常見的原因,先處理供需失衡。"},
@@ -427,6 +437,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d1:{ story:"Ephedrine 後心跳 138 次/分,血壓 190/104,V5 ST 段下降 4 mm,出現頻繁心室早期收縮。",
       v:{hr:138,sbp:190,dbp:104,spo2:98,etco2:36,rr:12,skin:"normal",alarm:true,rhythm:"st"},
+      ecg:{t:"stdep",lead:"V5",mm:4,pvc:true},
       q:"現在該怎麼做?",
       options:[
         {t:"加深麻醉、esmolol 滴定降心跳、純氧,印 12 導程",rescue:true,to:"s2",ck:[1,2,3],fb:"回到正確方向。"},
@@ -436,6 +447,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d2:{ story:"推注後血壓 72/40 mmHg,心跳 132,ST 段下降更深。",
       v:{hr:132,sbp:72,dbp:40,spo2:98,etco2:30,rr:12,skin:"pale",alarm:true,rhythm:"st"},
+      ecg:{t:"stdep",lead:"V5",mm:4},
       q:"現在該怎麼做?",
       options:[
         {t:"停 nitroglycerin,phenylephrine 拉回舒張壓,補充容積,之後再小心處理心跳",rescue:true,to:"s2",ck:[1,4],fb:"及時把冠狀動脈灌流壓救回來。"},
@@ -445,6 +457,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     d3:{ story:"15 分鐘後 V5 ST 段改成上升 3 mm,血壓 90/50,出現心室頻脈連發。",
       v:{hr:124,sbp:90,dbp:50,spo2:96,etco2:30,rr:12,skin:"pale",alarm:true,rhythm:"st"},
+      ecg:{t:"stelev",lead:"V5",mm:3},
       q:"現在該怎麼做?",
       options:[
         {t:"純氧、維持血壓、控制心跳;印 12 導程、通知外科與心臟科,討論盡快結束手術與緊急心導管",rescue:true,to:"s2",ck:[0,1],fb:"ST 上升代表可能急性冠狀動脈阻塞,要盡快安排再灌流。"},
@@ -454,6 +467,7 @@ window.ISLAND_SCENARIOS = [
       ]},
     s2:{ story:"心跳 76、血壓 130/74 後 ST 段回到基準線。40 分鐘後腸繫膜出血,血紅素 7.0 g/dL,血壓 84/46 mmHg、心跳 114,ST 段又下降。",
       v:{hr:114,sbp:84,dbp:46,spo2:98,etco2:32,rr:12,skin:"pale",alarm:true,rhythm:"st"},
+      ecg:{t:"stdep",lead:"V5",mm:2},
       q:"接下來怎麼做?",
       options:[
         {t:"補充容積並輸紅血球;用 phenylephrine 維持冠狀動脈灌流壓;請外科止血;術後追蹤 troponin、加護監測並會診心臟科",ok:true,to:"win",ck:[3,4,5],fb:"正確。這次缺血來自低血壓與貧血(氧供應不足),要補氧供應而不是壓心跳。"},
@@ -623,6 +637,7 @@ window.ISLAND_SCENARIOS.push(
       ]},
     d2:{ story:"Midazolam 後產婦沒有反應,呼吸每分鐘 4 次,SpO₂ 84%,心跳 44。",
       v:{hr:44,sbp:66,dbp:34,spo2:84,etco2:18,rr:4,skin:"cyan",alarm:true},
+      ecg:{t:"stdep",lead:"V5",mm:1.5},
       q:"現在該怎麼做?",
       options:[
         {t:"給 flumazenil 後觀察",to:"cpr",fb:"呼吸抑制主要來自高位阻斷,flumazenil 救不了,缺氧後心跳停止。"},
@@ -1013,6 +1028,7 @@ window.ISLAND_SCENARIOS.push(
       ]},
     d3:{ story:"收縮壓 78/40,心跳 134,EtCO₂ 26 mmHg,心電圖 ST 段壓低。",
       v:{hr:134,sbp:78,dbp:40,spo2:94,etco2:26,rr:14,temp:36.8,skin:"pale",alarm:true},
+      ecg:{t:"stdep",lead:"V5",mm:1.5},
       q:"現在該怎麼做?",
       options:[
         {t:"呼救;啟動大量輸血,加溫輸注 PRBC 與 FFP、升壓藥維持收縮壓 ≥110,請外科加壓止血",rescue:true,to:"s3",ck:[0,4],fb:"把血容量與腦灌流壓拉回來。"},
@@ -1073,6 +1089,7 @@ window.ISLAND_SCENARIOS.push(
       ]},
     d1:{ story:"EtCO₂ 掉到 14 mmHg,動脈壓 70/40,SpO₂ 88%,心電圖出現 ST 段改變。",
       v:{hr:128,sbp:70,dbp:40,spo2:88,etco2:14,rr:8,skin:"pale",alarm:true,rhythm:"st"},
+      ecg:{t:"stdep",lead:"II",mm:1.5},
       q:"現在該怎麼做?",
       options:[
         {t:"請外科淹沒術野、100% O₂、停笑氣、經中央靜脈導管抽氣、升壓劑支持",rescue:true,to:"s2",ck:[1,2,3,4],fb:"回到正確方向。"},

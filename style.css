@@ -443,3 +443,14 @@ body.immersive .netbar{align-items:stretch}
 .orpanel .usebox .pt{margin:6px 0}
 .orpanel .usebox .chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
 .orpanel .chip.bag.done{opacity:.55}
+/* 在模擬手術室(含恢復室)裡才出現:離開模擬手術室 */
+.orleave{display:none;position:fixed;z-index:9;left:max(12px,env(safe-area-inset-left,0px));top:calc(max(12px,env(safe-area-inset-top,0px)) + 58px);font-family:inherit;font-size:14px;font-weight:600;color:#2E5E73;background:#fff;border:1.5px solid #CFE0E8;border-radius:999px;padding:7px 14px;box-shadow:0 4px 14px rgba(30,60,80,.18);cursor:pointer}
+body.in-suite .orleave{display:block}
+/* 情境題的心電圖(心電圖紙:小格 1 mm、大格 5 mm) */
+.orpanel .ecg{margin:6px 0 8px;background:#FFF5F3;border:1px solid #F2C9C2;border-radius:10px;padding:6px 6px 4px;overflow:hidden}
+.orpanel .ecg svg{display:block;width:100%;height:auto}
+.orpanel .ecg .g1{stroke:#F6D3CC;stroke-width:.5}
+.orpanel .ecg .g5{stroke:#E9A79B;stroke-width:1}
+.orpanel .ecg .tr{fill:none;stroke:#1F2A33;stroke-width:1.6;stroke-linejoin:round}
+.orpanel .ecg .cal{fill:none;stroke:#1F2A33;stroke-width:1.4}
+.orpanel .ecg small{display:block;font-size:11.5px;color:#9A6A62;margin-top:2px}
