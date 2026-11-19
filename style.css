@@ -435,3 +435,11 @@ body.immersive .netbar{align-items:stretch}
 .orpanel .chip small{color:var(--ink-3)}
 .orpanel .aslog ul{list-style:none;margin:4px 0 8px;padding:0;display:flex;flex-direction:column;gap:3px;font-size:13px}
 .orpanel .aslog li b{color:#2E6E57;margin-right:6px}
+/* 模擬手術室:從收集冊拿出來用 */
+.orpanel .usebox{margin-top:10px;padding:10px;border:1.5px dashed #E2B86A;border-radius:14px;background:#FFF9EC}
+.orpanel .usebox .q{margin:0 0 8px}
+.orpanel .opt.use{border-color:#E2B86A;background:#FFFDF6}
+.orpanel .opt.use>b{background:#FFF0CC;font-size:15px}
+.orpanel .opt.use span b{display:inline;width:auto;height:auto;background:none;border-radius:0;color:inherit;font-size:inherit}
+.orpanel .opt.use small{display:block;font-size:12px;opacity:.7;margin-top:2px}
+.orpanel .opt.use[disabled]{opacity:.6;background:#FAF7F0}

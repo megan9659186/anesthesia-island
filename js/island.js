@@ -250,7 +250,7 @@ function orAuto(){ if(ORS.sc||!$("orPanel").hidden||!OR_SCENARIOS.length) return
   orStart(pool[Math.floor(Math.random()*pool.length)]); }
 const orShuffle=(n)=>{ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 function orStart(n){ if(NET.role==="guest") return; orOpen(); const w=window.__world; if(w){ w.orReset&&w.orReset(); if(w.inOR&&!w.inOR()) w.goIsland(3); }
-  ORS.cprOn=false; ORS.idx=n; ORS.sc=OR_SCENARIOS[n]; ORS.nodes={...ORS.sc.nodes,...aclsNodes(ORS.sc)}; ORS.acls=false; ORS.help=false; ORS.node=ORS.sc.start; ORS.n=1; ORS.end=null; ORS.miss=0; ORS.ck=new Set(); ORS.last=null; ORS.log=[]; ORS.logK=[]; ORS.isbar=null; ORS.isbarK=null; ORS.assist=[];
+  ORS.cprOn=false; ORS.idx=n; ORS.sc=OR_SCENARIOS[n]; ORS.nodes={...ORS.sc.nodes,...aclsNodes(ORS.sc)}; ORS.acls=false; ORS.help=false; ORS.node=ORS.sc.start; ORS.n=1; ORS.end=null; ORS.miss=0; ORS.ck=new Set(); ORS.last=null; ORS.log=[]; ORS.logK=[]; ORS.isbar=null; ORS.isbarK=null; ORS.assist=[]; ORS.gift={};
   Object.assign(ORS.V,ORV0); Object.assign(ORS.T,ORV0); orStep(); }
 function orStep(){ const nd=ORS.nodes[ORS.node]; { const w=window.__world, inArrest=/^(cpr|v\d|p\d)$/.test(String(ORS.node)); if(w&&w.orCPR&&inArrest!==!!ORS.cprOn){ ORS.cprOn=inArrest; w.orCPR(inArrest); } } ORS.order=orShuffle(nd.options.length); orSetTarget({...ORV0,...nd.v},!ORS.last); orRender(); }
 // 有人喊「呼救」:廣播「麻醉科 1 房需要幫忙」,麻醉主治醫師與三位麻醉專科護理師衝進來
@@ -266,9 +266,9 @@ function orRender(){ const c=ORS.sc, nd=ORS.nodes[ORS.node], P=$("orPanel"), L=O
       <p class="pt">👤 ${c.patient}</p>
       <p class="story">${nd.story}</p><div class="vit">${orVitHTML()}</div>${orAssistHTML()}
     </div><div><div class="q">${nd.q}</div>`+
-    ORS.order.map((k,j)=>`<button type="button" class="opt" data-k="${k}"><b>${"ABCD"[j]}</b><span>${nd.options[k].t}</span></button>`).join("")+`</div></div>`;
+    ORS.order.map((k,j)=>`<button type="button" class="opt" data-k="${k}"><b>${"ABCD"[j]}</b><span>${nd.options[k].t}</span></button>`).join("")+orUseHTML(nd)+`</div></div>`;
   P.scrollTop=0; orWire(P); netSendOR("q");
-  P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>{ const o=nd.options[+b.dataset.k]; (o.ck||[]).forEach(i=>ORS.ck.add(i)); ORS.logK.push([ORS.node,+b.dataset.k]); netSend({t:"pick",j:b.querySelector("b").textContent});
+  const pick=(o,k,b)=>{ (o.ck||[]).forEach(i=>ORS.ck.add(i)); ORS.logK.push([ORS.node,k]); netSend({t:"pick",j:b.querySelector("b").textContent});
     if(o.ok){ if(!/^(cpr|v\d|p\d|rosc)$/.test(String(ORS.node))) award("scn:"+c.id+":"+ORS.node); } else if(!o.rescue){ ORS.miss++; wrongAns(); }
     if(HELP_RE.test(o.t)) orCallHelp();
     if(/電擊/.test(o.t)&&!/不可電擊|同步|不再電擊|改只給藥/.test(o.t)){ const w=window.__world; w&&w.orShock&&w.orShock(); orFlash(); }
@@ -278,7 +278,19 @@ function orRender(){ const c=ORS.sc, nd=ORS.nodes[ORS.node], P=$("orPanel"), L=O
     if(o.to==="dead"){ orSetTarget(ORVF); setTimeout(()=>orEnd(false,o.fb),900); P.querySelectorAll(".opt").forEach(x=>x.disabled=true); b.classList.add("no"); return; }
     if(o.to==="win"){ orIsbar(); return; }
     if(o.to==="cpr"&&!ORS.acls){ ORS.acls=true; toast("🚨 病人心跳停止,開始 ACLS"); }
-    ORS.node=o.to; ORS.n++; orStep(); }); }
+    ORS.node=o.to; ORS.n++; orStep(); };
+  P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>pick(nd.options[+b.dataset.k],+b.dataset.k,b));
+  // 從收集冊拿出來用:先用隊友遞過來的,沒有才用自己收集冊裡的(用掉就少一個)
+  P.querySelectorAll(".opt[data-u]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.u, u=(nd.use||[])[i]; if(!u) return; const g=ORS.gift||{};
+    if(g[u.n]>0) g[u.n]--; else if(BAGD[u.n]>0){ BAGD[u.n]--; if(!BAGD[u.n]) delete BAGD[u.n]; try{ localStorage.setItem("island-bag",JSON.stringify(BAGD)); }catch(e){} } else return;
+    toast(`🎒 拿出 ${colIcon(u.n)} ${esc(u.n)}`); pick(u,-1-i,b); }); }
+// 這個狀況可以從收集冊拿出來用的東西(情境題 nodes 的 use 欄位)。沒有的話只顯示灰色,提醒下班去收集
+function orUseHas(n){ return ((ORS.gift||{})[n]||0)+(BAGD[n]||0); }
+function orUseHTML(nd,guest){ const U=nd&&nd.use; if(!U||!U.length) return "";
+  return `<div class="usebox"><div class="q">🎒 收集冊裡可以拿出來用</div>`+U.map((u,i)=>{ const c=guest?0:orUseHas(u.n);
+    return guest?`<button type="button" class="opt use" disabled><b>${colIcon(u.n)}</b><span>這一步用得到 <b>${esc(u.n)}</b>;你的背包裡有的話可以從下面拿出來給隊友</span></button>`
+      :c?`<button type="button" class="opt use" data-u="${i}"><b>${colIcon(u.n)}</b><span>${u.t}<small>收集冊裡有 ${c} 個</small></span></button>`
+      :`<button type="button" class="opt use" disabled><b>${colIcon(u.n)}</b><span>收集冊裡沒有 <b>${esc(u.n)}</b>。下班去釣魚、浮潛或撿漂流瓶,收集到了下次就能拿出來用。</span></button>`; }).join("")+`</div>`; }
 /* ---------- 病人穩定後:和巡迴護理師一起推去恢復室,用 ISBAR 交班 ---------- */
 function orIsbar(){ const c=ORS.sc, P=$("orPanel"), L=ORS.last;
   orSetTarget({hr:82,sbp:118,dbp:70,spo2:99,etco2:36,rr:12,temp:37,skin:"normal",alarm:false,shake:false,rhythm:"sinus"});
@@ -429,6 +441,8 @@ function netRecv(c,d){ if(!d||typeof d!=="object"||typeof d.t!=="string") return
 function netSendOR(ph){ if(NET.role!=="host") return; if(ph==="off"||(!ORS.sc&&ph!=="menu")){ netSend({t:"or",ph:"off"}); return; }
   netSend({t:"or",ph,i:ORS.idx,node:ORS.node,ord:ORS.order,n:ORS.n,acls:!!ORS.acls,ck:[...(ORS.ck||[])],log:ORS.logK||[],end:ORS.end,miss:ORS.miss||0,ib:ORS.ibOrd||null,ibk:ORS.isbarK,as:(ORS.assist||[]).slice(-12)}); }
 function orAssistAdd(who,x){ if(!ORS.sc) { toast(`🤝 ${esc(who)}:${esc(x)}`); return; } (ORS.assist=ORS.assist||[]).push({who,x}); toast(`🤝 ${esc(who)}:${esc(x)}`);
+  { const m=/^拿出 (.+)$/.exec(String(x)); if(m&&COL_BY[m[1]]){ const g=ORS.gift=ORS.gift||{}; g[m[1]]=(g[m[1]]||0)+1;
+    const nd=ORS.nodes&&ORS.nodes[ORS.node]; if(!ORS.end&&nd&&(nd.use||[]).some(u=>u.n===m[1])){ if($("orPanel").querySelector(".usebox")){ orRender(); return; } } } }
   const el=$("orPanel").querySelector(".aslog"); if(el) el.outerHTML=orAssistHTML(); netSendOR(ORS.end?"end":ORS.node?"q":"menu"); }
 function orAssistHTML(end){ const a=(NET.role==="guest"?(NET.or&&NET.or.as):ORS.assist)||[]; if(!a.length) return end?"":`<div class="aslog" hidden></div>`;
   return `<div class="aslog"><div class="q">🤝 ${end?"團隊協助紀錄":"隊友協助"}</div><ul>${a.slice(end?0:-5).map(r=>`<li><b>${esc(netStr(r.who,10))}</b>${esc(netStr(r.x,40))}</li>`).join("")}</ul></div>`; }
@@ -441,11 +455,11 @@ function orGuest(d){ const P=$("orPanel"), w=window.__world; NET.or=d;
   const lock=`<p class="lock">🔒 由 ${host} 作答;你可以協助與拿背包的東西。</p>`;
   const opts=(list,ord)=>(Array.isArray(ord)?ord:list.map((_,i)=>i)).filter(k=>list[k]).map((k,j)=>`<button type="button" class="opt" disabled><b>${"ABCD"[j]}</b><span>${list[k].t}</span></button>`).join("");
   let left="", right="";
-  if(d.ph==="q"&&nd){ left=`<p class="pt">👤 ${c.patient}</p><p class="story">${nd.story}</p><div class="vit">${orVitHTML()}</div>${orAssistHTML()}`; right=`<div class="q">${nd.q}</div>`+opts(nd.options,d.ord)+lock+orHelpPad(d.acls); }
+  if(d.ph==="q"&&nd){ left=`<p class="pt">👤 ${c.patient}</p><p class="story">${nd.story}</p><div class="vit">${orVitHTML()}</div>${orAssistHTML()}`; right=`<div class="q">${nd.q}</div>`+opts(nd.options,d.ord)+orUseHTML(nd,true)+lock+orHelpPad(d.acls); }
   else if(d.ph==="go"){ left=`<p class="pt">👤 ${c.patient}</p>`; right=`<p class="story">病人穩定了。${host} 和巡迴護理師一起把病人推到恢復室,準備交班⋯⋯</p>`; }
   else if(d.ph==="ib"){ left=`<p class="story">到恢復室了。恢復室護理師說:「好,請交班。」</p><div class="vit">${orVitHTML()}</div>`; right=`<div class="q">哪一個交班最完整、最正確?</div>`+opts(orIsbarOpts(c),d.ib)+lock; }
   else if(d.ph==="end"){ const win=d.end==="win", ck=new Set(d.ck||[]), got=c.checklist.filter((_,i)=>ck.has(i)).length;
-    const steps=(d.log||[]).map(([nid,k])=>{ const o=nodes[nid]&&nodes[nid].options[k]; return o?`<li class="${o.ok||o.rescue?"ok":"no"}"><b>${o.ok?"✅ ":o.rescue?"🩹 ":o.to==="dead"?"💔 ":"⚠️ "}${o.t}</b><span>${o.fb||""}</span></li>`:""; }).join("");
+    const steps=(d.log||[]).map(([nid,k])=>{ const o=nodes[nid]&&(k<0?(nodes[nid].use||[])[-1-k]:nodes[nid].options[k]); return o?`<li class="${o.ok||o.rescue?"ok":"no"}"><b>${o.ok?"✅ ":o.rescue?"🩹 ":o.to==="dead"?"💔 ":"⚠️ "}${o.t}</b><span>${o.fb||""}</span></li>`:""; }).join("");
     left=`<div class="end ${win?"ok":"dead"}"><b>${win?"🎉 病人穩定了":"💀 病人死亡"}</b><div style="font-size:13px;opacity:.85">診斷:${c.tag||""}</div>${win?c.win:c.dead}</div>`;
     right=`<div class="q">OSCE 評分表:做到 ${got} / ${c.checklist.length} 項</div><ul class="ck">${c.checklist.map((t,i)=>`<li class="${ck.has(i)?"hit":"miss"}"><span>${ck.has(i)?"✅":"⬜"}</span><span>${t}</span></li>`).join("")}</ul>${steps?`<div class="q">逐步檢討</div><ol class="rev">${steps}</ol>`:""}${orAssistHTML(true)}`; }
   P.innerHTML=orHead(`👥 ${host} 主持 · ${d.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${netNum(d.n)|0} · ${c.title}`)+`<div class="cols"><div>${left}</div><div>${right}</div></div>`;
@@ -1008,7 +1022,7 @@ async function buildWorld(){
         const hn=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),glove); hn.position.y=-.9; fo.add(hn);
         p.userData.arms.push({ar,fo,sx});
         if(o.hands==="front"){ ar.rotation.x=-.5; ar.rotation.z=sx*.15; fo.rotation.x=-1.3; } else if(o.hands==="type"){ ar.rotation.x=-.35; fo.rotation.x=-1.1; } else { ar.rotation.z=sx*.08; } }
-      p.scale.setScalar(o.scale||.86); shadowy(p); return p; }
+      p.scale.setScalar(o.scale||1.1); shadowy(p); return p; }   // 和小麻一樣高
     const staff=[
       {role:"外科醫師",o:{scrub:0x5B7FBF,gown:0x4E76B8,cap:0x2E4B7A,glove:0xF2E3C2,hands:"front",loupe:true},x:2.4,z:-.7,ry:-Math.PI/2},
       {role:"外科住院醫師",o:{scrub:0x5B7FBF,gown:0x4E76B8,cap:0x6FA0D8,glove:0xF2E3C2,hands:"front"},x:-2.4,z:-1.2,ry:Math.PI/2},
@@ -1022,14 +1036,35 @@ async function buildWorld(){
     const room={ yaw, station:toW(-1.7,4.4), stationYaw:yaw+Math.PI, doorIn:toW(W/2-1.4,DZC), doorOut:toW(W/2+1.6,DZC), via:toW(5.0,6.2),
       inside:(p)=>{ const l=loc(p.x,p.z); return Math.abs(l.x)<W/2-.2 && Math.abs(l.z)<D/2-.2; }, near:(x,z)=>{ const l=loc(x,z); return (Math.abs(l.x)<W/2+1.5 && Math.abs(l.z)<D/2+1.5) || (l.x>-22 && l.x<-10 && l.z>-7 && l.z<13); } };
     // 兩個點都在手術室外面、但直線會穿過手術室時:沿牆外側繞過轉角(不穿牆)
-    room.around=(p,q)=>{ const bx=W/2+.5, bz=D/2+.5, hx=W/2+1.3, hz=D/2+1.3; const L=(v)=>{ const l=loc(v.x,v.z); return [l.x,l.z]; };
+    room.around=(p,q)=>{ const bx=W/2+1.1, bz=D/2+1.1, hx=W/2+1.5, hz=D/2+1.5; const L=(v)=>{ const l=loc(v.x,v.z); return [l.x,l.z]; };
       const hit=(P,Q)=>{ let t0=0,t1=1; for(const [o,d,lim] of [[P[0],Q[0]-P[0],bx],[P[1],Q[1]-P[1],bz]]){ if(Math.abs(d)<1e-6){ if(Math.abs(o)>=lim) return false; } else { let u0=(-lim-o)/d, u1=(lim-o)/d; if(u0>u1){ const t=u0; u0=u1; u1=t; } t0=Math.max(t0,u0); t1=Math.min(t1,u1); if(t0>t1) return false; } } return true; };
       const A=L(p), B=L(q); if(!hit(A,B)) return [];
       const C=[[hx,hz],[hx,-hz],[-hx,-hz],[-hx,hz]]; let best=null, bl=1e9;
       for(let i=0;i<4;i++) for(const dir of [1,-1]) for(let n=1;n<=3;n++){ const seq=[]; for(let k=0;k<n;k++) seq.push(C[(i+dir*k+8)%4]); const pts=[A,...seq,B]; let ok=true, len=0;
         for(let k=0;k<pts.length-1;k++){ if(hit(pts[k],pts[k+1])){ ok=false; break; } len+=Math.hypot(pts[k+1][0]-pts[k][0],pts[k+1][1]-pts[k][1]); } if(ok&&len<bl){ bl=len; best=seq; } }
       return best?best.map(c=>toW(c[0],c[1])):[]; };
-    room.viaFor=(p)=>{ const l=loc(p.x,p.z); return l.x<3.5&&l.z>-2; };   // 從門口走到床頭(麻醉站位)時,先沿右牆走到床頭那側,不穿過外科團隊
+    room.viaFor=(p)=>{ const l=loc(p.x,p.z); return l.x<3.5&&l.z>-2; };
+    // 手術室裡的障礙物(本地座標的圓 [x,z,半徑]):小麻走路會繞開手術台、麻醉機、推車、器械台與手術室成員,不會穿過去
+    const OR_FIX=[[0,-3.3,1.45],[0,-.6,1.45],[0,2.0,1.45],[-2.4,1.05,.75],[2.4,1.05,.75],[2.45,2.75,.45],[-5.4,3.0,1.9],[.9,-4.6,.9],[4.6,-6.3,1.05],[6.6,-6.3,1.05],[8.2,3.8,1.15],[8.6,5.8,.9],[4.6,7.6,.55],[-8.7,7.3,1.35],[-3.4,-4.6,.6],[-6.6,-6.7,.95],[-4.6,-6.9,.95]];
+    room.obs=()=>{ const out=OR_FIX.map(([x,z,r])=>({c:toW(x,z),r}));
+      const ppl=[...staff.map(d=>d.p),...HELP.filter(h=>h.p.visible).map(h=>h.p)];
+      ppl.forEach(p=>out.push({c:toW(p.position.x,p.position.z),r:1.15}));
+      chairs.forEach(ch=>{ if(ch.c.visible!==false) out.push({c:toW(ch.c.position.x,ch.c.position.z),r:.8}); });
+      return out; };
+    // 點到手術室裡:目標拉回離牆(和牆邊櫃子)有距離的地方,也不會停在手術台或人身上;點到牆上:推到牆外
+    const MX=W/2-1.5, MZ=D/2-1.5, BX=W/2+1.4, BZ=D/2+1.4;
+    room.inWall=(p)=>{ const l=loc(p.x,p.z); return !room.inside(p)&&Math.abs(l.x)<BX&&Math.abs(l.z)<BZ; };
+    room.fixTarget=(p,from)=>{ const l=loc(p.x,p.z), fromIn=!!(from&&room.inside(from));
+      if(room.inside(p)||(fromIn&&Math.abs(l.x)<BX&&Math.abs(l.z)<BZ)){
+        const clampB=()=>{ l.x=Math.max(-MX,Math.min(MX,l.x)); l.z=Math.max(-MZ,Math.min(MZ,l.z)); }; clampB();
+        // 手術台(含頭端)當成長方形,點在上面就站到最近的一側
+        const TX=1.6+.5, TZ0=-4.8, TZ1=3.5; if(Math.abs(l.x)<TX&&l.z>TZ0&&l.z<TZ1){ const dl=[TX-l.x,TX+l.x,l.z-TZ0,TZ1-l.z], m=Math.min(...dl); if(m===dl[0]) l.x=TX; else if(m===dl[1]) l.x=-TX; else if(m===dl[2]) l.z=TZ0; else l.z=TZ1; }
+        const C=[...OR_FIX.slice(3),...room.obs().slice(OR_FIX.length).map(o=>{ const q=loc(o.c.x,o.c.z); return [q.x,q.z,o.r]; })];
+        for(let it=0;it<3;it++) for(const [x,z,r] of C){ const dx=l.x-x, dz=l.z-z, d=Math.hypot(dx,dz), rr=r+.35; if(d<rr){ if(d<1e-3) l.x=x+rr; else { l.x=x+dx/d*rr; l.z=z+dz/d*rr; } } }
+        clampB(); return toW(l.x,l.z); }
+      if(Math.abs(l.x)<BX&&Math.abs(l.z)<BZ){ if(BX-Math.abs(l.x)<BZ-Math.abs(l.z)) l.x=Math.sign(l.x||1)*BX; else l.z=Math.sign(l.z||1)*BZ; return toW(l.x,l.z); }
+      return new THREE.Vector3(p.x,0,p.z); };
+    room.clampIn=(p)=>{ const l=loc(p.x,p.z); if(Math.abs(l.x)>=W/2+.3||Math.abs(l.z)>=D/2+.3) return p; l.x=Math.max(-(W/2-1.0),Math.min(W/2-1.0,l.x)); l.z=Math.max(-(D/2-1.0),Math.min(D/2-1.0,l.z)); return toW(l.x,l.z); };   // 從門口走到床頭(麻醉站位)時,先沿右牆走到床頭那側,不穿過外科團隊
     I.room=room;
     // live state pushed from the scenario panel
     const st={hr:72,sbp:118,dbp:72,spo2:99,etco2:35,rr:12,temp:36.5,skin:"normal",alarm:false,shake:false,rhythm:"sinus"};
@@ -2306,7 +2341,7 @@ async function buildWorld(){
 
   /* ================= 海邊背景音效(Web Audio 即時合成,不需下載音檔;預設關閉,可隨時切換) ================= */
   const SOUND=(()=>{
-    let ac=null, master=null, monBus=null, flatG=null, nextBeep=0, nextAlarm=.4, on=false, nodes=null, nextWave=0, nextGull=2, nextDol=6, nextRainTick=0, nextDrop=0, nextGust=0;
+    let ac=null, master=null, monBus=null, flatG=null, orAuto=false, orMute=false, nextClink=3, nextSuck=8, nextBeep=0, nextAlarm=.4, on=false, nodes=null, nextWave=0, nextGull=2, nextDol=6, nextRainTick=0, nextDrop=0, nextGust=0;
     let pref=false; try{ pref=localStorage.getItem("island-sound")==="on"; }catch(e){}
     const btn=$("sndToggle");
     function ui(){ btn.textContent=on?"🔊 音效開":"🔇 音效關"; btn.setAttribute("aria-pressed",on); }
@@ -2324,6 +2359,10 @@ async function buildWorld(){
       monBus=ac.createGain(); monBus.gain.value=0; monBus.connect(ac.destination);
       { const o=ac.createOscillator(); o.type="sine"; o.frequency.value=520; flatG=ac.createGain(); flatG.gain.value=0; o.connect(flatG); flatG.connect(monBus); o.start(); }
       const pink=noiseBuf(14,true), white=noiseBuf(8,false);
+      // 開刀房的背景聲:空調送風的低沉嗡嗡聲、出風口的細細氣流聲(走在 monBus 上,只有在手術室裡才聽得到)
+      { const f=ac.createBiquadFilter(); f.type="lowpass"; f.frequency.value=220; const g=ac.createGain(); g.gain.value=.16; chain(loop(pink),f,g,monBus);
+        const h=ac.createBiquadFilter(); h.type="highpass"; h.frequency.value=2600; const hg=ac.createGain(); hg.gain.value=.008; chain(loop(white),h,hg,monBus);
+        const o=ac.createOscillator(); o.type="sine"; o.frequency.value=100; const og=ac.createGain(); og.gain.value=.012; o.connect(og); og.connect(monBus); o.start(); }
       // surf bed + rolling waves
       const bedG=ac.createGain(); bedG.gain.value=.25; const bf=ac.createBiquadFilter(); bf.type="lowpass"; bf.frequency.value=300; const swellA=ac.createGain(); swellA.gain.value=.6; chain(loop(pink),bf,swellA,bedG,master);
       // two slow, unsynchronised swells make the sea rise and fall
@@ -2420,17 +2459,28 @@ async function buildWorld(){
       g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.2); g.gain.linearRampToValueAtTime(vol*.6,t+dur*.7); g.gain.linearRampToValueAtTime(0,t+dur);
       src.connect(f); f.connect(g); g.connect(monBus); src.start(t,Math.random()*.5); src.stop(t+dur+.05);
       if(inh){ const o=ac.createOscillator(); o.type="sine"; o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(70,t+.08); const og=ac.createGain(); og.gain.setValueAtTime(.12,t); og.gain.exponentialRampToValueAtTime(.001,t+.1); o.connect(og); og.connect(monBus); o.start(t); o.stop(t+.12); } }
+    // 器械台上金屬器械輕碰的「叮」、遠處抽吸管的「嘶——」
+    function clink(){ const t=ac.currentTime+.02, p=ac.createStereoPanner?ac.createStereoPanner():null, out=ac.createGain(); out.gain.value=.05+Math.random()*.04; if(p){ p.pan.value=Math.random()*1.4-.7; out.connect(p); p.connect(monBus); } else out.connect(monBus);
+      const n=1+Math.floor(Math.random()*2); for(let j=0;j<n;j++){ const t0=t+j*(.09+Math.random()*.1); [2350,3720,5480].forEach((f,i)=>{ const o=ac.createOscillator(); o.type="sine"; o.frequency.value=f*(1+Math.random()*.03); const g=ac.createGain(); g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(1/(i+1),t0+.003); g.gain.exponentialRampToValueAtTime(.001,t0+.25+i*.05); o.connect(g); g.connect(out); o.start(t0); o.stop(t0+.4); }); } }
+    function suction(){ const t=ac.currentTime+.02, L=.8+Math.random()*1.4, s=ac.createBufferSource(); s.buffer=nodes.white; const f=ac.createBiquadFilter(); f.type="bandpass"; f.frequency.value=1300+Math.random()*600; f.Q.value=1.8; const g=ac.createGain();
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.025,t+.15); g.gain.setValueAtTime(.025,t+L); g.gain.linearRampToValueAtTime(0,t+L+.25); s.connect(f); f.connect(g); g.connect(monBus); s.start(t,Math.random()*4); s.stop(t+L+.3); }
     function blip(f,dur,vol,delay){ const t=ac.currentTime+(delay||0); const o=ac.createOscillator(); o.type="sine"; o.frequency.value=f; const g=ac.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.008); g.gain.setValueAtTime(vol,t+dur-.02); g.gain.linearRampToValueAtTime(0,t+dur); o.connect(g); g.connect(monBus); o.start(t); o.stop(t+dur+.02); }
-    async function setOn(v){ on=v; ui(); try{ localStorage.setItem("island-sound",on?"on":"off"); }catch(e){}
+    async function setOn(v,keep){ on=v; ui(); if(!keep) try{ localStorage.setItem("island-sound",on?"on":"off"); }catch(e){}
       if(on){ if(!ac) init(); if(ac.state==="suspended") await ac.resume(); master.gain.setTargetAtTime(.75,ac.currentTime,.6); nextWave=0; }
       else if(ac){ master.gain.setTargetAtTime(0,ac.currentTime,.25); monBus.gain.setTargetAtTime(0,ac.currentTime,.1); } }
-    btn.onclick=()=>setOn(!on);
+    const inOR=()=>!!(ISL[3].room&&ISL[3].room.inside(nurse.position));
+    // 自己按音效鈕:在手術室裡關掉就維持關掉(直到走出手術室),不再自動打開
+    btn.onclick=()=>{ if(inOR()) orMute=on; orAuto=false; setOn(!on); };
     // 瀏覽器規定點一下才能出聲:上次有開音效的人,第一次點畫面就自動開;iPhone 要在 touchend/click 才算數,所以三種都聽
     const UNLOCK=["pointerdown","touchend","click"];
     if(pref){ const first=()=>{ UNLOCK.forEach(ev=>window.removeEventListener(ev,first,true)); if(!on) setOn(true); }; UNLOCK.forEach(ev=>window.addEventListener(ev,first,true)); }
     // 切到別的 App 再回來,iPhone 會把聲音暫停(狀態變成 suspended/interrupted):下一次點畫面或回到網頁時自動恢復
     const wake=()=>{ if(on&&ac&&ac.state!=="running"){ try{ if(navigator.audioSession) navigator.audioSession.type="playback"; }catch(e){} ac.resume().catch(()=>{}); } };
-    UNLOCK.forEach(ev=>window.addEventListener(ev,wake,true)); document.addEventListener("visibilitychange",()=>{ if(!document.hidden) wake(); });
+    UNLOCK.forEach(ev=>window.addEventListener(ev,wake,true));
+    // 離開麻醉誘島(切到別的分頁或 App、螢幕鎖定、關掉網頁):島的聲音全部停掉;回來後才恢復
+    const sleep=()=>{ try{ if(ac&&ac.state==="running") ac.suspend(); }catch(e){} try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){} };
+    document.addEventListener("visibilitychange",()=>{ if(document.hidden) sleep(); else wake(); });
+    window.addEventListener("pagehide",sleep); window.addEventListener("pageshow",()=>{ if(!document.hidden) wake(); });
     ui();
     ENV.onBolt=()=>{ if(on&&ac) thunder(); };
     // 拉著點滴架跳舞時唱一小段(原創的簡單旋律)
@@ -2439,6 +2489,10 @@ async function buildWorld(){
         g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.16,t+.03); g.gain.setValueAtTime(.12,t+d*.7); g.gain.linearRampToValueAtTime(0,t+d*.95);
         const g2=ac.createGain(); g2.gain.value=.25; o.connect(g); o2.connect(g2); g2.connect(g); g.connect(ac.destination); o.start(t); o2.start(t); o.stop(t+d); o2.stop(t+d); t+=d; }); }
     return {sing, update(dt){
+      // 小麻一走進模擬手術室,音效自動打開並換成開刀房的聲音;走出手術室,恢復原本(沒開音效的人就再關掉)
+      { const io=inOR(); if(!io) orMute=false;
+        if(io&&!on&&!orMute&&!document.hidden){ orAuto=true; setOn(true,true); }
+        else if(!io&&orAuto){ orAuto=false; if(on) setOn(false,true); } }
       if(!on||!ac||ac.state!=="running") return;
       { // 走進模擬手術室:海邊的聲音淡出,改成監視器的心跳嗶聲(音調跟著 SpO₂)、警報與心跳停止的長音
         const inOr=!!(ISL[3].room&&ISL[3].room.inside(nurse.position)), kk=ac.currentTime;
@@ -2446,6 +2500,8 @@ async function buildWorld(){
         if(inOr){ const v=OR.get(), flat=v.rhythm==="asystole"||v.hr<1, vf=v.rhythm==="vf"; flatG.gain.setTargetAtTime(flat?.2:0,kk,.04);
           if(!flat&&!vf){ nextBeep-=dt; if(nextBeep<=0){ nextBeep=60/Math.max(30,v.hr); blip(Math.max(330,Math.min(880,440+(v.spo2-80)*22)),.09,.24); } } else nextBeep=0;
           { const V=OR.vent; if(V.ev){ ventSound(V.ev==="in"); V.ev=null; } }
+          nextClink-=dt; if(nextClink<=0){ nextClink=5+Math.random()*10; clink(); }
+          nextSuck-=dt; if(nextSuck<=0){ nextSuck=12+Math.random()*16; suction(); }
           if(v.alarm&&!flat){ nextAlarm-=dt; if(nextAlarm<=0){ nextAlarm=vf?1.1:2.6; [0,.17,.34].forEach(d=>blip(vf?1150:960,.11,.15,d)); } } else nextAlarm=.4;
           return; }
         flatG.gain.setTargetAtTime(0,kk,.04); }
@@ -2517,7 +2573,7 @@ async function buildWorld(){
   const ringPt=(I,a)=>new THREE.Vector3(I.c.x+Math.cos(a)*I.ring,0,I.c.z+Math.sin(a)*I.ring);
   function arcI(I,a0,a1){ let d=a1-a0; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; const n=Math.max(1,Math.ceil(Math.abs(d)/.35)); const out=[]; for(let i=1;i<=n;i++) out.push(ringPt(I,a0+d*i/n)); return out; }
   function within(I,from,to){ const T=new THREE.Vector3(to.x,0,to.z);
-    if(I.room){ const R=I.room, a=R.inside(from), b=R.inside(to); if(a&&b) return [T]; const V=(p)=>R.viaFor(p)?[R.via.clone()]:[]; if(a) return [...V(from),R.doorIn.clone(),R.doorOut.clone(),...R.around(R.doorOut,T),T]; if(b) return [...R.around(from,R.doorOut),R.doorOut.clone(),R.doorIn.clone(),...V(T),T]; return [...R.around(from,T),T]; }
+    if(I.room){ const R=I.room; T.copy(R.fixTarget(T,from)); const a=R.inside(from), b=R.inside(T); if(a&&b) return [T]; const V=(p)=>R.viaFor(p)?[R.via.clone()]:[]; if(a) return [...V(from),R.doorIn.clone(),R.doorOut.clone(),...R.around(R.doorOut,T),T]; if(b) return [...R.around(from,R.doorOut),R.doorOut.clone(),R.doorIn.clone(),...V(T),T]; return [...R.around(from,T),T]; }
     if(!I.ring) return [T];
     const fx=from.x-I.c.x, fz=from.z-I.c.z, tx=to.x-I.c.x, tz=to.z-I.c.z, abx=tx-fx, abz=tz-fz, L2=abx*abx+abz*abz||1;
     const k=Math.max(0,Math.min(1,-(fx*abx+fz*abz)/L2)); const near=Math.hypot(fx+abx*k,fz+abz*k), lim=I.i===0?4.9:I.ring-1.0;
@@ -2539,7 +2595,7 @@ async function buildWorld(){
   let routeMs=0;
   // detour around every district platform (bookcase included) instead of walking through it
   const AV_R=PR+1.0;
-  const OBST=()=>[...Object.values(D3).map(d=>({c:d.c,r:AV_R})),...trees.filter(t=>t.userData.keep!==undefined?t.userData.keep:t.visible).map(t=>({c:t.position,r:1.15})),...OBS,...SANDBUILT.map(g=>({c:g.position,r:1.35}))];
+  const OBST=()=>[...(ISL[3].room&&ISL[3].room.obs?ISL[3].room.obs():[]),...Object.values(D3).map(d=>({c:d.c,r:AV_R})),...trees.filter(t=>t.userData.keep!==undefined?t.userData.keep:t.visible).map(t=>({c:t.position,r:1.15})),...OBS,...SANDBUILT.map(g=>({c:g.position,r:1.35}))];
   function detour(A,B,depth=0){
     if(depth<10) for(const ob of OBST()){ const c=ob.c, r=ob.r;
       const ax=A.x-c.x, az=A.z-c.z, bx=B.x-c.x, bz=B.z-c.z; const aIn=Math.hypot(ax,az)<r-.05, bIn=Math.hypot(bx,bz)<r-.05;
@@ -2553,7 +2609,7 @@ async function buildWorld(){
       const n=Math.max(2,Math.ceil(Math.abs(dg)/.3)), arcp=[]; for(let i=0;i<=n;i++){ const g=g0+dg*i/n; arcp.push(new THREE.Vector3(c.x+Math.cos(g)*r,0,c.z+Math.sin(g)*r)); }
       return [...(aIn?[arcp[0]]:detour(A,arcp[0],depth+1)),...arcp.slice(1),...(bIn?[B]:detour(arcp[n],B,depth+1))]; }
     return [B]; }
-  function avoidPts(pts){ const out=[]; let prev=nurse.position.clone(); for(const p of pts){ out.push(...detour(prev,new THREE.Vector3(p.x,0,p.z))); prev=p; } return out; }
+  function avoidPts(pts){ const out=[]; let prev=nurse.position.clone(); const R=ISL[3].room; for(const p of pts){ out.push(...detour(prev,new THREE.Vector3(p.x,0,p.z)).map(q=>R&&R.clampIn?R.clampIn(q):q)); prev=p; } return out; }
   // 走路:整條路線一次規劃好,轉角修成圓弧,沿路連續前進(起步加速、到點前減速),不再一段一段走走停停
   const WALK_V=10, WALK_A=18;
   function smoothPath(P){ if(P.length<3) return P; const out=[P[0]];
