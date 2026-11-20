@@ -1084,7 +1084,7 @@ async function buildWorld(){
         const hdl=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.45,12),M(0x2A3038)); hdl.position.y=-.4; lh.add(hdl);
         const cap=new THREE.Mesh(new THREE.SphereGeometry(.3,14,10,0,Math.PI*2,0,Math.PI/2),lampM); cap.position.y=.17; lh.add(cap); });
       // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,正面比麻醉機的方向再往麻醉機斜一些;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
-      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=.95; g.add(pg);
+      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=1.2; g.add(pg);
         const pb=new THREE.Mesh(new RoundedBoxGeometry(1.1,2.4,.8,2,.06),white); pb.position.y=4.3; pg.add(pb);
         const pst=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,1.0,12),white); pst.position.y=6.0; pg.add(pst);
         const pt=tex(110,240,(c,w,h)=>{ c.fillStyle="#F3F4F2"; c.fillRect(0,0,w,h); [["#2FA84F",30],["#F2C318",80],["#3C78D8",130]].forEach(([col,y])=>{ c.fillStyle="#C9CDD1"; c.fillRect(14,y-14,82,32); c.fillStyle=col; c.beginPath(); c.arc(38,y+2,10,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(72,y+2,10,0,Math.PI*2); c.fill(); });
@@ -1099,7 +1099,7 @@ async function buildWorld(){
           out.push(pts[pts.length-1]); return out; };
         const conM=M(0xE8EBEE,{roughness:.4,metalness:.3});
         [[0x2FA84F,30,-1],[0xF2C318,80,0],[0x3C78D8,130,1]].forEach(([col,ty,o])=>{ const ox=-.5+38/110, oy=4.3+1.1-(ty+2)/240*2.2, d=o*.14, xi=-.35+o*.2;
-          const plug=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.16,10),conM); plug.rotation.x=Math.PI/2; plug.position.copy(PW(ox,oy,.49)); plug.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,.95)); g.add(plug);
+          const plug=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.16,10),conM); plug.rotation.x=Math.PI/2; plug.position.copy(PW(ox,oy,.49)); plug.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,1.2)); g.add(plug);
           const inlet=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.18,10),conM); inlet.rotation.x=Math.PI/2; inlet.position.copy(AW(xi,1.2,-1.12)); inlet.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,.45)); g.add(inlet);
           const pts=[PW(ox,oy,.56),PW(ox,oy-.35,.9),PW(ox*.5,.1,1.05),AW(-2.9+d,.08,1.55),AW(-2.9+d,.08,-1.95+d),AW(xi,.08,-1.95+d),AW(xi,1.2,-1.95+d),AW(xi,1.2,-1.2)];
           const curve=new THREE.CatmullRomCurve3(rounded(pts,.35),false,"centripetal");
