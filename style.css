@@ -291,7 +291,7 @@ body.immersive .wxbar:not(.closed)>*{flex:none}
 body.immersive.tools-closed .toolbar>*:not(#menuToggle){display:none!important}
 body.immersive .menubtn{font-weight:600}
 body.immersive.tools-closed .menubtn{background:var(--accent);color:#fff}
-body:not(.immersive) #islbar,body:not(.immersive) #skillbar,body:not(.immersive) #facebar,body:not(.immersive) #offbar,body:not(.immersive) #netbar{display:none}
+body:not(.immersive) #islbar,body:not(.immersive) #skillbar,body:not(.immersive) #facebar,body:not(.immersive) #lookbar,body:not(.immersive) #decobar,body:not(.immersive) #offbar,body:not(.immersive) #netbar{display:none}
 body.immersive #viewIsland .dbar{position:fixed;z-index:5;left:max(12px,env(safe-area-inset-left,0px));top:calc(max(12px,env(safe-area-inset-top,0px)) + 52px);max-width:min(560px,calc(100vw - 24px));margin:0;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(20,40,60,.18)}
 body.immersive .hint{bottom:max(14px,env(safe-area-inset-bottom,0px))}
 body.immersive .reset{bottom:max(14px,env(safe-area-inset-bottom,0px));right:max(14px,env(safe-area-inset-right,0px))}
@@ -454,3 +454,37 @@ body.in-suite .orleave{display:block}
 .orpanel .ecg .tr{fill:none;stroke:#1F2A33;stroke-width:1.6;stroke-linejoin:round}
 .orpanel .ecg .cal{fill:none;stroke:#1F2A33;stroke-width:1.4}
 .orpanel .ecg small{display:block;font-size:11.5px;color:#9A6A62;margin-top:2px}
+
+/* 裝扮小麻 */
+.lookbar,#decobar{width:300px}
+body.immersive .lookbar,body.immersive #decobar{align-items:stretch}
+.lookbar .lbl,#decobar .lbl{text-align:left}
+.lookbar .lbl small,#decobar .lbl small{color:var(--ink-3);margin-left:4px}
+.lookbar .sws{display:flex;flex-wrap:wrap;gap:7px}
+.lookbar .sw{width:30px;height:30px;border-radius:50%;border:2px solid #fff;background:var(--sw);box-shadow:0 0 0 1.5px #D9CFC2;cursor:pointer;padding:0}
+.lookbar .sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--accent)}
+.lookbar .sw.pat-dots{background:radial-gradient(circle,#fff 2.5px,transparent 3px) 0 0/9px 9px,var(--sw)}
+.lookbar .sw.pat-hearts{background:radial-gradient(circle,#E8456B 3px,transparent 3.5px) 0 0/10px 10px,var(--sw)}
+.lookbar .sw.pat-stars{background:radial-gradient(circle,#FFE27A 2.5px,transparent 3px) 0 0/9px 9px,var(--sw)}
+.lookbar .chips{display:flex;flex-wrap:wrap;gap:6px}
+.lookbar .chip{font:inherit;font-size:13px;border:1.5px solid #EADFD0;background:#fff;border-radius:999px;padding:5px 10px;cursor:pointer;color:var(--ink)}
+.lookbar .chip[aria-pressed="true"]{border-color:#E46F8E;background:#FFF0F4}
+.lookbar .nrow,#decobar .nrow{display:flex;gap:6px;flex-wrap:wrap}
+.lookbar .nrow button,#decobar .nrow button{font:inherit;font-size:13.5px;border:1.5px solid #EADFD0;background:#fff;border-radius:14px;padding:6px 11px;cursor:pointer;color:var(--ink)}
+.lnote{font-size:11.5px;color:var(--ink-3);text-align:left;line-height:1.5}
+/* 島嶼佈置 */
+#decobar .decos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#decobar .decos button{font:inherit;font-size:12.5px;border:1.5px solid #EADFD0;background:#fff;border-radius:12px;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--ink)}
+#decobar .decos button span{font-size:22px;line-height:1}
+#decobar .decos button:hover{border-color:#E46F8E;background:#FFF0F4}
+.decobar{position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 44px);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;max-width:calc(100% - 32px);background:rgba(255,255,255,.95);border-radius:18px;padding:8px 12px;box-shadow:0 6px 18px rgba(20,40,60,.2);font-size:14px;color:var(--ink)}
+.decobar[hidden]{display:none}
+.decobar .dbtns{display:flex;gap:6px}
+.decobar button{font:inherit;font-size:13.5px;border:1.5px solid #EADFD0;background:#fff;border-radius:14px;padding:6px 11px;cursor:pointer;color:var(--ink)}
+.decobar button.ok{border-color:var(--accent);background:var(--accent);color:#fff;font-weight:600}
+body.decoing .hint{display:none}
+/* 朋友在別人的島上:跟隨視角/離開 */
+.netfloat{position:absolute;z-index:6;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 44px);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.netfloat[hidden]{display:none}
+.netfloat button{font:inherit;font-size:13.5px;border:1.5px solid #EADFD0;background:rgba(255,255,255,.95);border-radius:999px;padding:7px 13px;cursor:pointer;color:var(--ink);box-shadow:0 4px 12px rgba(20,40,60,.16)}
+.netfloat button[aria-pressed="true"]{border-color:var(--accent);background:#FDEFF3}

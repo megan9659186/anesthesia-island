@@ -61,6 +61,14 @@ const SKILLS=[
   {id:"sail",cost:350,ic:"⛵",name:"下班開帆船",desc:"穿夏威夷花襯衫開帆船"},
   {id:"dance",cost:500,ic:"💃",name:"跳舞",desc:"點小麻,她會開心跳一段舞"},
   {id:"gold",cost:800,ic:"👑",name:"金色手術帽",desc:"手術帽換成閃亮的金色"}];
+/* ---------- 裝扮小麻:手術帽顏色、手術衣顏色、飾品(可多選)、臉上刺青(存在 localStorage 的 island-look) ---------- */
+const LOOK_CAPS={green:{c:0x5DAE8B,css:"#5DAE8B",n:"經典綠"},blue:{c:0x4A90D9,css:"#4A90D9",n:"天空藍"},navy:{c:0x2F4A7A,css:"#2F4A7A",n:"深藍"},pink:{c:0xF29BB8,css:"#F29BB8",n:"粉紅"},purple:{c:0x9B7FD1,css:"#9B7FD1",n:"薰衣草紫"},yellow:{c:0xF2C94C,css:"#F2C94C",n:"檸檬黃"},red:{c:0xE05B5B,css:"#E05B5B",n:"番茄紅"},black:{c:0x3A3F4B,css:"#3A3F4B",n:"黑色"},white:{c:0xF4F4F4,css:"#F4F4F4",n:"白色"},
+  dots:{pat:1,css:"#4A90D9",n:"藍底點點"},hearts:{pat:1,css:"#FBE3EA",n:"愛心印花"},stars:{pat:1,css:"#2F4A7A",n:"星星印花"}};
+const LOOK_SCRUBS={teal:{c:0x7EC4CF,c2:0x63B0BD,css:"#7EC4CF",n:"湖水藍"},sky:{c:0x9FC9F0,c2:0x7FAFDD,css:"#9FC9F0",n:"天藍"},navy:{c:0x34507F,c2:0x283F66,css:"#34507F",n:"海軍藍"},green:{c:0x5E9E7E,c2:0x4B8667,css:"#5E9E7E",n:"手術綠"},wine:{c:0x9A4258,c2:0x7F3347,css:"#9A4258",n:"酒紅"},pink:{c:0xF2A7BE,c2:0xE08CA6,css:"#F2A7BE",n:"粉紅"},purple:{c:0x8C78C9,c2:0x7462B0,css:"#8C78C9",n:"紫色"},gray:{c:0x8A929C,c2:0x727A84,css:"#8A929C",n:"灰色"},black:{c:0x34383F,c2:0x26292F,css:"#34383F",n:"黑色"}};
+const LOOK_ACC=[["bow","🎀","蝴蝶結"],["flower","🌸","小花髮夾"],["star","⭐","星星髮夾"],["glasses","👓","眼鏡"],["earring","⚪","珍珠耳環"],["necklace","📿","珍珠項鍊"],["mask","😷","外科口罩"]];
+const LOOK_TAT=[["none","✖️","不要"],["heart","❤️","愛心"],["star","⭐","星星"],["flower","🌸","小花"],["butterfly","🦋","蝴蝶"],["bolt","⚡","閃電"],["moon","🌙","月亮"],["cross","➕","小紅十字"],["dot","•","淚痣"]];
+function lookClean(L){ L=L&&typeof L==="object"?L:{}; return {cap:LOOK_CAPS[L.cap]?L.cap:"green",scrub:LOOK_SCRUBS[L.scrub]?L.scrub:"teal",acc:(Array.isArray(L.acc)?L.acc:[]).filter(k=>LOOK_ACC.some(a=>a[0]===k)).slice(0,LOOK_ACC.length),tat:LOOK_TAT.some(t=>t[0]===L.tat)?L.tat:"none"}; }
+let LOOK=lookClean(null); try{ LOOK=lookClean(JSON.parse(localStorage.getItem("island-look")||"null")); }catch(e){}
 /* ---------- 收集冊:撿到、釣到、浮潛抓到的東西都收在這裡(存在 localStorage 的 island-bag) ----------
    r = 稀有度(1 常見、2 少見、3 稀有);med = 會從海裡釣到/浮潛撿到/漂流瓶開出來的醫療收藏品
    之後模擬手術室要用到這些收藏品時,用名稱 n 當 key 讀 island-bag 即可。 */
@@ -91,8 +99,8 @@ function openCollection(){ const tot=Object.keys(COL_BY).length, got=Object.keys
   const close=()=>m.remove(); m.onclick=e=>{ if(e.target===m) close(); }; m.querySelector(".x").onclick=close; document.body.appendChild(m); }
 const COIN=new Set(); try{ JSON.parse(localStorage.getItem("island-coins")||"[]").forEach(k=>COIN.add(k)); }catch(e){}
 done.forEach(r=>COIN.add("q:"+r));
-let BONUS=0; try{ BONUS=parseFloat(localStorage.getItem("island-bonus")||"0")||0; }catch(e){}   // 零錢:埋藏金幣與浮潛金幣 +0.1、撿垃圾 +0.2、垃圾被海鷗或海龜吃掉 −0.2
-const coins=()=>Math.round((COIN.size*10+BONUS)*10)/10;
+let BONUS=0; try{ BONUS=parseFloat(localStorage.getItem("island-bonus")||"0")||0; }catch(e){}   // 零錢:埋藏金幣與浮潛金幣 +0.05、撿垃圾 +0.1、垃圾被海鷗或海龜吃掉 −0.1(下班活動的金幣額度比答題少很多)
+const coins=()=>Math.round((COIN.size*10+BONUS)*100)/100;
 /* 測試模式只給網站管理者:用專屬網址 /anesthesia-island/<金鑰>(或 ?dev=<金鑰>)開一次,這台瀏覽器就會記住(?dev=off 關閉)。程式裡只存金鑰的 SHA-256。 */
 const DEV_HASH="574cbccffe2edf1a9c544ade3f8e123a8fffb1b2afff7104c0e20a123d60a981";   // 也可以打開 /anesthesia-island/<鑰匙>(由 404.html 處理)
 let DEV=false; try{ DEV=localStorage.getItem("island-dev")==="1"; if(DEV&&localStorage.getItem("island-dev-new")==="1"){ localStorage.removeItem("island-dev-new"); setTimeout(()=>toast("🧪 已開啟管理者測試模式(只在這台瀏覽器)"),1500); } }catch(e){}
@@ -103,7 +111,9 @@ let TESTMODE=false; try{ if(DEV) TESTMODE=localStorage.getItem("island-test")!==
     else if(window.crypto&&crypto.subtle) crypto.subtle.digest("SHA-256",new TextEncoder().encode(key.trim().toLowerCase())).then(buf=>{ const hex=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join(""); clean();
       if(hex===DEV_HASH){ DEV=true; TESTMODE=true; try{ localStorage.setItem("island-dev","1"); localStorage.removeItem("island-test"); }catch(e){} renderSkills(); toast("🧪 已開啟管理者測試模式(只在這台瀏覽器)"); } }); } }
 function hasSkill(id){ if(TESTMODE) return true; const k=SKILLS.find(x=>x.id===id); return !k||coins()>=k.cost; }
-function toast(html,cls){ let box=document.querySelector(".toasts"); if(!box){ box=document.createElement("div"); box.className="toasts"; document.body.appendChild(box); }
+// 在模擬手術室(含恢復室)裡不跳金幣、撿垃圾之類的通知,免得干擾情境
+function orQuiet(){ const w=window.__world; try{ return !!(w&&((w.inSuite&&w.inSuite())||(w.inOR&&w.inOR()))); }catch(e){ return false; } }
+function toast(html,cls){ if(orQuiet()&&(cls==="coin"||/金幣|垃圾|解鎖新技能|class="gc"/.test(String(html)))) return; let box=document.querySelector(".toasts"); if(!box){ box=document.createElement("div"); box.className="toasts"; document.body.appendChild(box); }
   const t=document.createElement("div"); t.className="toast "+(cls||""); t.innerHTML=html; box.appendChild(t); setTimeout(()=>{ t.style.transition="opacity .4s"; t.style.opacity=0; setTimeout(()=>t.remove(),450); },Math.max(cls==="unlock"?5500:4200, (t.textContent||"").length*140)); }
 function lockMsg(id){ const k=SKILLS.find(x=>x.id===id); toast(`🔒 ${k.ic} ${k.name} 需要累積 ${k.cost} 金幣(目前 ${coins()})<br><small>去書裡練習考古題和 AI 猜題,答對就有金幣</small>`); }
 function award(key){ const w=window.__world; if(COIN.has(key)){ w&&w.react("right"); return; }
@@ -111,7 +121,7 @@ function award(key){ const w=window.__world; if(COIN.has(key)){ w&&w.react("righ
   const after=coins(); toast(`<i class="gc" aria-hidden="true"></i> +10 金幣 · 共 ${after}`,"coin"); w&&w.react("right");
   SKILLS.filter(k=>before<k.cost&&after>=k.cost).forEach((k,i)=>setTimeout(()=>{ toast(`🎉 解鎖新技能:${k.ic} ${k.name}!`,"unlock"); w&&w.react("unlock"); },900+i*600));
   renderSkills(); }
-function addBonus(v,why){ const before=coins(); BONUS=Math.round((BONUS+v)*10)/10; if(coins()<0) BONUS=Math.round(-COIN.size*100)/10; try{ localStorage.setItem("island-bonus",String(BONUS)); }catch(e){}
+function addBonus(v,why){ const before=coins(); BONUS=Math.round((BONUS+v)*100)/100; if(coins()<0) BONUS=-COIN.size*10; try{ localStorage.setItem("island-bonus",String(BONUS)); }catch(e){}
   const after=coins(); toast(`<i class="gc" aria-hidden="true"></i> ${why||""} ${v<0?"−"+(-v):"+"+v} 金幣 · 共 ${after}`,v<0?"":"coin"); const w=window.__world; w&&w.react(v<0?"wrong":"right");
   SKILLS.filter(k=>before<k.cost&&after>=k.cost).forEach((k,i)=>setTimeout(()=>{ toast(`🎉 解鎖新技能:${k.ic} ${k.name}!`,"unlock"); w&&w.react("unlock"); },900+i*600)); renderSkills(); }
 function wrongAns(){ const w=window.__world; w&&w.react("wrong"); }
@@ -391,7 +401,41 @@ const FACES=[["smile","😊","微笑"],["laugh","😄","大笑"],["wink","😉",
     box.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===k)); $("faceToggle").textContent=k==="auto"?"🔄 表情":(FACES.find(f=>f[0]===k)||FACES[0])[1]+" 表情"; try{ localStorage.setItem("island-face",k); }catch(e){} if(window.__world) window.__world.setFace(k==="auto"?null:k); };
   box.addEventListener("click",e=>{ const b=e.target.closest("[data-f]"); if(b) pick(b.dataset.f); });
   window.__pickFace=pick; }
-const panels=[["islToggle","islbar"],["coinToggle","skillbar"],["faceToggle","facebar"],["offToggle","offbar"],["wxToggle","wxbar"],["netToggle","netbar"]];
+const panels=[["islToggle","islbar"],["coinToggle","skillbar"],["faceToggle","facebar"],["lookToggle","lookbar"],["decoToggle","decobar"],["offToggle","offbar"],["wxToggle","wxbar"],["netToggle","netbar"]];
+/* ---------- 裝扮小麻面板 ---------- */
+{ const box=$("lookbar"); const sw=(grp,obj,cur)=>Object.entries(obj).map(([k,v])=>`<button type="button" class="sw${v.pat?" pat pat-"+k:""}" data-${grp}="${k}" aria-pressed="${k===cur}" title="${v.n}" aria-label="${v.n}" style="--sw:${v.css}"></button>`).join("");
+  const draw=()=>{ box.innerHTML=`<span class="lbl">手術帽 <small>${(LOOK_CAPS[LOOK.cap]||{}).n||""}</small></span><div class="sws">${sw("cap",LOOK_CAPS,LOOK.cap)}</div>
+    <span class="lbl">手術衣 <small>${(LOOK_SCRUBS[LOOK.scrub]||{}).n||""}</small></span><div class="sws">${sw("scrub",LOOK_SCRUBS,LOOK.scrub)}</div>
+    <span class="lbl">飾品 <small>可以多選</small></span><div class="chips">${LOOK_ACC.map(([k,ic,n])=>`<button type="button" class="chip" data-acc="${k}" aria-pressed="${LOOK.acc.includes(k)}">${ic} ${n}</button>`).join("")}</div>
+    <span class="lbl">臉上的刺青</span><div class="chips">${LOOK_TAT.map(([k,ic,n])=>`<button type="button" class="chip" data-tat="${k}" aria-pressed="${LOOK.tat===k}">${ic} ${n}</button>`).join("")}</div>
+    <div class="nrow"><button type="button" class="sec" id="lookPeek">👀 看看小麻</button><button type="button" class="sec" id="lookReset">↺ 恢復原本的樣子</button></div>
+    <small class="lnote">${hasSkill("gold")&&(()=>{ try{ return localStorage.getItem("island-gold")==="1"; }catch(e){ return false; } })()?"目前戴著 👑 金色手術帽(技能),到金幣面板可以關掉。":"手術帽、手術衣只在上班時穿;下班換泳裝或夏威夷衫時,眼鏡、耳環和刺青還會在。"}</small>`; };
+  const save=()=>{ try{ localStorage.setItem("island-look",JSON.stringify(LOOK)); }catch(e){} const w=window.__world; w&&w.setLook&&w.setLook(LOOK); draw(); };
+  box.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; const d=b.dataset;
+    if(d.cap) LOOK.cap=d.cap; else if(d.scrub) LOOK.scrub=d.scrub; else if(d.tat) LOOK.tat=d.tat;
+    else if(d.acc){ LOOK.acc=LOOK.acc.includes(d.acc)?LOOK.acc.filter(k=>k!==d.acc):[...LOOK.acc,d.acc]; }
+    else if(b.id==="lookReset") LOOK=lookClean(null);
+    else if(b.id==="lookPeek"){ const w=window.__world; w&&w.lookAtNurse&&w.lookAtNurse(); return; } else return; save(); });
+  draw(); $("lookToggle").addEventListener("click",()=>{ draw(); if(!$("lookbar").classList.contains("closed")){ const w=window.__world; w&&w.lookAtNurse&&w.lookAtNurse(); } }); }
+/* ---------- 島嶼佈置面板 ---------- */
+const DECO_MAX=80;
+const DECO_ITEMS=[["pot","🌷","花盆"],["tree","🌳","小樹"],["cactus","🌵","仙人掌"],["mush","🍄","大蘑菇"],["rock","🪨","石頭"],["lamp","🏮","路燈"],["bench","🪑","長椅"],["umb","⛱️","陽傘"],["flag","🚩","旗子"],["balloon","🎈","氣球"],["heart","💗","愛心看板"],["sign","🪧","名字木牌"],["xmas","🎄","聖誕樹"],["snowman","⛄","雪人"]];
+function decoBar(k){ let bar=$("decoBar"); if(!bar){ bar=document.createElement("div"); bar.id="decoBar"; bar.className="decobar"; $("stage").appendChild(bar); }
+  const w=window.__world; if(!k){ bar.hidden=true; w&&w.decoMode(null); document.body.classList.remove("decoing"); return; }
+  const it=DECO_ITEMS.find(x=>x[0]===k); w&&w.decoMode(k); document.body.classList.add("decoing"); bar.hidden=false;
+  bar.innerHTML=`<span>${k==="remove"?"🧹 收起模式:點一下要收起來的東西":`${it[1]} 放置 <b>${it[2]}</b>:點島上的空地放下去 · 點已放好的東西可以轉向`}</span>
+    <span class="dbtns"><button type="button" data-dk="pick">🪴 換東西</button>${k==="remove"?"":`<button type="button" data-dk="remove">🧹 收起</button>`}<button type="button" class="ok" data-dk="done">✓ 完成</button></span>`;
+  bar.onclick=e=>{ const b=e.target.closest("[data-dk]"); if(!b) return; const a=b.dataset.dk; if(a==="done") decoBar(null); else if(a==="remove") decoBar("remove"); else { $("decoToggle").click(); } }; }
+{ const box=$("decobar"); const draw=()=>{ const w=window.__world, n=w&&w.decoCount?w.decoCount():0;
+    box.innerHTML=`<span class="lbl">佈置我的島 <small>${n}/${DECO_MAX} 樣</small></span><div class="decos">${DECO_ITEMS.map(([k,ic,nm])=>`<button type="button" data-dk="${k}"><span>${ic}</span>${nm}</button>`).join("")}</div>
+      <div class="nrow"><button type="button" class="sec" data-dk="remove">🧹 收起東西</button>${n?`<button type="button" class="sec" data-dk="clear">🗑️ 全部清除</button>`:""}</div><small class="lnote">選一樣東西,再點島上的空地放下去。朋友來你的島時也看得到你的佈置。</small>`; };
+  box.addEventListener("click",e=>{ const b=e.target.closest("[data-dk]"); if(!b) return; const k=b.dataset.dk, w=window.__world; if(!w) return;
+    if(NET.role==="guest"){ toast("🏝️ 你在朋友的島上,回到自己的島才能佈置喔"); return; }
+    if(k==="clear"){ if(confirm("確定要把島上的佈置全部收起來嗎?")){ w.decoClear(); decoBar(null); draw(); } return; }
+    box.classList.add("closed"); $("decoToggle").setAttribute("aria-expanded",false); decoBar(k); });
+  $("decoToggle").addEventListener("click",draw); }
+function netDecoSend(){ if(NET.role!=="host") return; const w=window.__world; if(w&&w.decoList) netSend({t:"deco",d:w.decoList()}); }
+
 panels.forEach(([t,p])=>{ const el=$(t); const old=el.onclick; el.onclick=()=>{ panels.forEach(([t2,p2])=>{ if(p2!==p){ $(p2).classList.add("closed"); $(t2).setAttribute("aria-expanded",false); } }); const c=$(p).classList.toggle("closed"); el.setAttribute("aria-expanded",!c); }; });
 $("offbar").addEventListener("click",e=>{ const b=e.target.closest("[data-off]"); if(!b||!window.__world) return; const k=b.dataset.off;
   const sk={swim:"swim",hawaii:"sail",free:"freeswim",snorkel:"freeswim",fish:"fish"}[k]; if(k!=="work"&&!hasSkill(sk)){ lockMsg(sk); return; }
@@ -464,8 +508,8 @@ async function netJoin(code){ code=netStr(code,12).toUpperCase().replace(/[^A-Z0
     setTimeout(()=>{ if(!NET.role&&NET.peer===peer){ NET.status="連不上:可能是網路擋住了點對點連線(醫院或公司 Wi‑Fi 常會擋),換成手機網路再試試看。"; peer.destroy(); NET.peer=null; netUI(); } },30000); });
   peer.on("error",e=>{ if(!NET.role){ peer.destroy(); NET.peer=null; } netErr(e); }); }
 function netWire(c,asGuest){
-  c.on("open",()=>{ if(asGuest){ NET.role="guest"; NET.status=""; NET.tp=false; } NET.conns.set(c.peer,{c}); c.send({t:"hi",name:PLAYER.name,role:PLAYER.role});
-    if(!asGuest){ for(const [k,p] of NET.prof) if(k!==c.peer) c.send({t:"hi",id:k,name:p.name,role:p.role}); if(ORS.sc) netSendOR(ORS.end?"end":"q"); }
+  c.on("open",()=>{ if(asGuest){ NET.role="guest"; NET.status=""; NET.tp=false; NET.follow=true; NET.hIsl=-1; decoBar(null); } NET.conns.set(c.peer,{c}); c.send({t:"hi",name:PLAYER.name,role:PLAYER.role});
+    if(!asGuest){ for(const [k,p] of NET.prof) if(k!==c.peer) c.send({t:"hi",id:k,name:p.name,role:p.role}); if(ORS.sc) netSendOR(ORS.end?"end":"q"); const w=window.__world; if(w&&w.decoList) c.send({t:"deco",d:w.decoList()}); }
     netUI(); });
   c.on("data",d=>netRecv(c,d));
   c.on("close",()=>netDrop(c.peer));
@@ -475,7 +519,7 @@ function netDrop(id){ if(!NET.conns.has(id)) return; NET.conns.delete(id);
   const w=window.__world; w&&w.netDel&&w.netDel(id); if(NET.prof.has(id)) toast(`👋 ${esc(netName(id))} 離開了你的島`); NET.prof.delete(id); netSend({t:"bye",id}); netUI(); }
 function netLeave(){ const w=window.__world; for(const k of NET.prof.keys()) w&&w.netDel&&w.netDel(k);
   for(const [,v] of NET.conns){ try{ v.c.close(); }catch(e){} } NET.conns.clear(); NET.prof.clear();
-  const wasGuest=NET.role==="guest"; if(NET.peer){ try{ NET.peer.destroy(); }catch(e){} } Object.assign(NET,{peer:null,role:null,code:null,host:null,status:""});
+  const wasGuest=NET.role==="guest"; if(wasGuest&&w){ w.camFollow&&w.camFollow(null); w.decoShow&&w.decoShow(null); } if(NET.peer){ try{ NET.peer.destroy(); }catch(e){} } Object.assign(NET,{peer:null,role:null,code:null,host:null,status:""});
   if(wasGuest){ $("orPanel").hidden=true; document.body.classList.remove("or-run"); ORS.gsc=null; orSetTarget({...ORV0},true); w&&w.orReset&&w.orReset(); }
   netUI(); }
 // 收到對方的資料:只接受已知的類型,文字限制長度,一律當純文字顯示
@@ -485,7 +529,11 @@ function netRecv(c,d){ if(!d||typeof d!=="object"||typeof d.t!=="string") return
   switch(d.t){
     case "hi": { const prof={name:netStr(d.name,10).trim(),role:d.role==="SNA"?"SNA":"CRNA"}; const isNew=!NET.prof.has(key); NET.prof.set(key,prof); w&&w.netAdd&&w.netAdd(key,prof);
       if(isNew) toast(fromHost&&!d.id?`🏝️ 你來到 ${esc(prof.name||"朋友")} 的島了`:`👋 ${esc(prof.name||"朋友")}(${prof.role})來到${NET.role==="host"?"你的":"這座"}島`); netUI(); break; }
-    case "st": if(w&&w.netUpd){ w.netUpd(key,d); if(fromHost&&!d.id&&!NET.tp&&Number.isInteger(d.i)){ NET.tp=true; w.goIsland(Math.max(0,Math.min(6,d.i)),true); } } break;
+    case "st": if(w&&w.netUpd){ w.netUpd(key,d);
+      if(fromHost&&!d.id){ // 朋友的畫面跟著邀請者的視角;邀請者換島時朋友也跟過去(朋友在手術室裡、或切成自由視角時不跟)
+        if(NET.follow&&Array.isArray(d.c)&&d.c.length===6&&d.c.every(v=>Number.isFinite(+v))) w.camFollow(d.c.map(Number));
+        if(Number.isInteger(d.i)){ const i=Math.max(0,Math.min(6,d.i)); if(i!==NET.hIsl&&(NET.follow||!NET.tp)&&!(w.inSuite&&w.inSuite())){ NET.hIsl=i; NET.tp=true; w.goIsland(i,true); } } } } break;
+    case "deco": if(fromHost&&w&&w.decoShow&&Array.isArray(d.d)) w.decoShow(d.d.slice(0,DECO_MAX)); break;
     case "bye": if(fromHost){ w&&w.netDel&&w.netDel(key); NET.prof.delete(key); netUI(); } break;
     case "full": NET.status="這座島已經有 3 位朋友了。"; netLeave(); break;
     case "as": { const x=netStr(d.x,40); if(NET.role==="host") orAssistAdd(netName(key),x); else toast(`🤝 ${esc(netName(key))}:${esc(x)}`); w&&w.netSay&&w.netSay(key,x); break; }
@@ -545,7 +593,12 @@ function netUI(){ const box=$("netbar"); if(!box) return; const tg=$("netToggle"
   on("netHost",netHost); on("netGo",()=>netJoin(($("netCode")||{}).value)); on("netEnd",netLeave);
   on("netCopy",()=>{ try{ navigator.clipboard.writeText(link).then(()=>toast("📋 已複製邀請連結")); }catch(e){ prompt("邀請連結",link); } });
   on("netShare",()=>{ navigator.share({title:"麻醉誘島",text:`來我的麻醉誘島一起玩!房號 ${NET.code}`,url:link}).catch(()=>{}); });
-  const ci=$("netCode"); if(ci) ci.onkeydown=e=>{ if(e.key==="Enter") netJoin(ci.value); }; }
+  const ci=$("netCode"); if(ci) ci.onkeydown=e=>{ if(e.key==="Enter") netJoin(ci.value); };
+  // 朋友(guest)畫面上的小工具列:跟著邀請者視角 / 自由視角、隨時離開
+  let fl=$("netFloat"); if(!fl&&$("stage")){ fl=document.createElement("div"); fl.id="netFloat"; fl.className="netfloat"; $("stage").appendChild(fl); }
+  if(fl){ fl.hidden=NET.role!=="guest"; if(NET.role==="guest"){ const hn=esc(netName(NET.host&&NET.host.peer));
+    fl.innerHTML=`<button type="button" id="netFollow" aria-pressed="${!!NET.follow}">${NET.follow?`👀 跟著 ${hn} 的視角`:"🔓 自由視角"}</button><button type="button" class="sec" id="netBye">🚪 離開 ${hn} 的島</button>`;
+    on("netFollow",()=>{ NET.follow=!NET.follow; const w=window.__world; if(!NET.follow&&w) w.camFollow(null); netUI(); }); on("netBye",netLeave); } } }
 setInterval(()=>{ if(!NET.role||!NET.conns.size) return; const w=window.__world; if(!w||!w.netSelf) return; const d=w.netSelf(); d.t="st"; netSend(d); },100);
 { const q=new URLSearchParams(location.search), j=q.get("join"); if(j){ NET.pendingJoin=j; q.delete("join"); try{ history.replaceState(null,"",location.pathname+(q.toString()?"?"+q:"")+location.hash); }catch(e){} } }
 window.addEventListener("beforeunload",()=>{ if(NET.role) netSend({t:"bye"}); });
@@ -1006,8 +1059,8 @@ async function buildWorld(){
         const face=new THREE.Mesh(new THREE.CircleGeometry(1.15,32),new THREE.MeshBasicMaterial({color:0xFFFBEA})); face.rotation.x=Math.PI/2; face.position.y=-.19; lh.add(face);
         const hdl=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.45,12),M(0x2A3038)); hdl.position.y=-.4; lh.add(hdl);
         const cap=new THREE.Mesh(new THREE.SphereGeometry(.3,14,10,0,Math.PI*2,0,Math.PI/2),lampM); cap.position.y=.17; lh.add(cap); });
-      // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,正面朝麻醉機;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
-      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=Math.atan2(-5.4+7.55,3.0-5.8); g.add(pg);
+      // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,和麻醉機朝同一個方向;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
+      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=.45; g.add(pg);
         const pb=new THREE.Mesh(new RoundedBoxGeometry(1.1,2.4,.8,2,.06),white); pb.position.y=4.3; pg.add(pb);
         const pst=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,1.0,12),white); pst.position.y=6.0; pg.add(pst);
         const pt=tex(110,240,(c,w,h)=>{ c.fillStyle="#F3F4F2"; c.fillRect(0,0,w,h); [["#2FA84F",30],["#F2C318",80],["#3C78D8",130]].forEach(([col,y])=>{ c.fillStyle="#C9CDD1"; c.fillRect(14,y-14,82,32); c.fillStyle=col; c.beginPath(); c.arc(38,y+2,10,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(72,y+2,10,0,Math.PI*2); c.fill(); });
@@ -1491,7 +1544,7 @@ async function buildWorld(){
   }
 
   /* ---------- nurse anesthetist ---------- */
-  const NS=1.35; const nurse=buildNurse(); nurse.userData.nurseHit=true; nurse.scale.setScalar(NS); scene.add(nurse);
+  const NS=1.35; const nurse=buildNurse(); nurse.userData.setLook(LOOK); nurse.userData.nurseHit=true; nurse.scale.setScalar(NS); scene.add(nurse);
   // 模擬手術室(含恢復室)裡:小麻不能自己走出去,要按「🚪 離開模擬手術室」;在裡面不吃零食,垃圾也暫停被海鷗、海龜吃掉
   let leavingOR=false;
   const suiteP=(p)=>{ const R=ISL[3].room; return !!R&&R.inSuiteArea(p); };
@@ -1562,7 +1615,20 @@ async function buildWorld(){
         case "angry": if(!open){ oval(LX,30,36,8); oval(RX,30,36,8); } c.lineWidth=12; brow(LX,-14,EY-46); brow(RX,-14,EY-46); blush(.7); frown(34,12,MY+12);
           c.strokeStyle="#E0475A"; c.lineWidth=6; c.beginPath(); c.moveTo(420,70); c.lineTo(440,90); c.moveTo(440,70); c.lineTo(420,90); c.moveTo(430,62); c.lineTo(430,98); c.stroke(); break;
         default: if(!open){ oval(LX); oval(RX); } blush(.55); smile(); }
-      faceTex.needsUpdate=true; }
+      drawTattoo(c); faceTex.needsUpdate=true; }
+    // 臉上的小刺青(裝扮):畫在右臉頰(畫面左右看起來在小麻的左臉頰)
+    let tatK="none";
+    function drawTattoo(c){ const x=0, y=0; c.save(); c.translate(410,250); c.scale(1.45,1.45);
+      switch(tatK){
+        case "heart": c.fillStyle="#E8456B"; c.beginPath(); c.moveTo(x,y+14); c.bezierCurveTo(x-22,y,x-14,y-16,x,y-6); c.bezierCurveTo(x+14,y-16,x+22,y,x,y+14); c.fill(); break;
+        case "star": c.fillStyle="#F2B705"; c.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, r=i%2?7:17; c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r); } c.closePath(); c.fill(); break;
+        case "flower": c.fillStyle="#F28AA6"; for(let i=0;i<5;i++){ const a=i/5*Math.PI*2; c.beginPath(); c.arc(x+Math.cos(a)*9,y+Math.sin(a)*9,8,0,7); c.fill(); } c.fillStyle="#FFD94A"; c.beginPath(); c.arc(x,y,6,0,7); c.fill(); break;
+        case "butterfly": c.fillStyle="#7E6BD6"; [[-1,-1],[1,-1]].forEach(([sx])=>{ c.beginPath(); c.ellipse(x+sx*10,y-6,10,13,sx*.5,0,7); c.fill(); c.beginPath(); c.ellipse(x+sx*8,y+9,7,8,-sx*.4,0,7); c.fill(); }); c.fillStyle="#3B3347"; c.fillRect(x-1.5,y-12,3,26); break;
+        case "bolt": c.fillStyle="#F2A007"; c.beginPath(); c.moveTo(x+4,y-20); c.lineTo(x-10,y+3); c.lineTo(x,y+3); c.lineTo(x-5,y+20); c.lineTo(x+11,y-4); c.lineTo(x+1,y-4); c.closePath(); c.fill(); break;
+        case "dot": c.fillStyle="#4A3A3A"; c.beginPath(); c.arc(x-12,y+2,3.5,0,7); c.fill(); break;
+        case "cross": c.fillStyle="#E25B4B"; c.fillRect(x-4,y-13,8,26); c.fillRect(x-13,y-4,26,8); break;
+        case "moon": c.fillStyle="#F2C94C"; c.beginPath(); c.arc(x,y,14,0,7); c.fill(); c.globalCompositeOperation="destination-out"; c.beginPath(); c.arc(x+7,y-4,12,0,7); c.fill(); break; }
+      c.restore(); }
     let faceEx="smile", blinkT=2.5, blinking=0;
     function setFace(ex){ faceEx=ex; drawFace(faceEx,false); }
     function faceTick(dt){ if(blinking>0){ blinking-=dt; if(blinking<=0) drawFace(faceEx,false); return; } blinkT-=dt; if(blinkT<=0){ blinkT=2.5+Math.random()*3; if(["smile","surprised","sad","angry"].includes(faceEx)){ blinking=.13; drawFace(faceEx,true); } } }
@@ -1671,6 +1737,36 @@ async function buildWorld(){
     const lei=new THREE.Group(); lei.visible=false; body.add(lei);
     { const cols=[0xFF7A8A,0xFFD94A,0xFFFFFF,0xFFB347,0xB57EDC]; for(let i=0;i<18;i++){ const a=i/18*Math.PI*2; const f=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),M(cols[i%5],{roughness:.6})); f.position.set(Math.cos(a)*.42,0,Math.sin(a)*.36); lei.add(f); }
       lei.position.set(0,1.98,.06); lei.rotation.x=.38; }
+    /* ---- 裝扮:手術帽顏色、手術衣顏色、飾品、臉上刺青(存在 localStorage 的 island-look) ---- */
+    const ACC={}, accM=(c,o)=>M(c,{roughness:.45,...(o||{})});
+    { const bow=new THREE.Group(); const bm=accM(0xE8456B); for(const sx of [-1,1]){ const w=new THREE.Mesh(new THREE.ConeGeometry(.13,.26,10),bm); w.rotation.z=sx*Math.PI/2; w.position.x=sx*.13; bow.add(w); }
+      bow.add(new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),bm)); bow.position.set(.36,.5,.3); bow.rotation.set(-.5,.5,.3); capAll.add(bow); ACC.bow=bow; }
+    { const fl=new THREE.Group(); [0xFFFFFF,0xFFFFFF,0xFFFFFF,0xFFFFFF,0xFFFFFF].forEach((c,i)=>{ const a=i/5*Math.PI*2, pt=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),accM(0xFFB6C9)); pt.scale.set(1,1,.45); pt.position.set(Math.cos(a)*.09,Math.sin(a)*.09,0); fl.add(pt); });
+      const cn=new THREE.Mesh(new THREE.SphereGeometry(.05,8,6),accM(0xFFD94A)); cn.position.z=.02; fl.add(cn); fl.position.set(-.42,.36,.42); fl.rotation.set(-.3,-.7,0); capAll.add(fl); ACC.flower=fl; }
+    { const gl=new THREE.Group(), fm=accM(0x3B3347,{roughness:.3}), lm=new THREE.MeshPhysicalMaterial({color:0xE8F4FF,transparent:true,opacity:.25,roughness:.05});
+      for(const sx of [-.21,.21]){ const fr=new THREE.Mesh(new THREE.TorusGeometry(.13,.018,6,24),fm); fr.position.set(sx,.0,.6); fr.rotation.y=sx*.35; gl.add(fr); const ln=new THREE.Mesh(new THREE.CircleGeometry(.125,20),lm); ln.position.set(sx,0,.602); ln.rotation.y=sx*.35; gl.add(ln);
+        const arm=new THREE.Mesh(new THREE.BoxGeometry(.02,.02,.45),fm); arm.position.set(sx*2.6,.02,.36); arm.rotation.y=sx*-.3; gl.add(arm); }
+      const br=new THREE.Mesh(new THREE.TorusGeometry(.05,.015,6,12,Math.PI),fm); br.position.set(0,.03,.63); gl.add(br); head.add(gl); ACC.glasses=gl; }
+    { const er=new THREE.Group(); for(const sx of [-1,1]){ const pr=new THREE.Mesh(new THREE.SphereGeometry(.055,10,8),M(0xFFF8EE,{roughness:.15,metalness:.2})); pr.position.set(sx*.6,-.24,.06); er.add(pr); } head.add(er); ACC.earring=er; }
+    { const mk=new THREE.Group(); const mm=M(0x8FC3E8,{roughness:.8,side:THREE.DoubleSide});
+      const sh=new THREE.Mesh(new THREE.SphereGeometry(.645,30,10,Math.PI/2-.85,1.7,Math.PI/2+.08,.52),mm); mk.add(sh);
+      head.add(mk); ACC.mask=mk; }
+    { const nk=new THREE.Group(); for(let i=0;i<20;i++){ const a=Math.PI*.15+i/19*Math.PI*.7; const pr=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),M(0xF5E6C8,{roughness:.2,metalness:.3})); pr.position.set(Math.cos(a)*.3,-Math.sin(a)*.16,.0); nk.add(pr); }
+      nk.position.set(0,2.04,.36); nk.rotation.x=.25; body.add(nk); ACC.necklace=nk; }
+    { const hp=new THREE.Group(); const hm=M(0xF2C94C,{metalness:.6,roughness:.25}); const st=new THREE.Mesh(new THREE.OctahedronGeometry(.12),hm); hp.add(st); hp.position.set(.42,.3,.44); hp.rotation.set(0,.7,0); capAll.add(hp); ACC.star=hp; }
+    Object.values(ACC).forEach(a=>{ a.visible=false; shadowy(a); });
+    const LK={cap:"green",scrub:"teal",acc:[],tat:"none"}; let goldCap=false, shadesOn=false;
+    const capPat={}; const capTex=(k,base)=>capPat[k]||(capPat[k]=tex(256,128,(c,w,h)=>{ c.fillStyle=base; c.fillRect(0,0,w,h);
+      if(k==="dots"){ c.fillStyle="#FFFFFF"; for(let y=8;y<h;y+=22) for(let x=(y/22%2)*11+6;x<w;x+=22){ c.beginPath(); c.arc(x,y,4.5,0,7); c.fill(); } }
+      else if(k==="hearts"){ c.fillStyle="#E8456B"; for(let y=12;y<h;y+=28) for(let x=(y/28%2)*14+10;x<w;x+=28){ c.beginPath(); c.moveTo(x,y+7); c.bezierCurveTo(x-10,y,x-6,y-8,x,y-3); c.bezierCurveTo(x+6,y-8,x+10,y,x,y+7); c.fill(); } }
+      else if(k==="stars"){ c.fillStyle="#FFE27A"; for(let y=12;y<h;y+=26) for(let x=(y/26%2)*13+8;x<w;x+=26){ c.beginPath(); for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, r=i%2?2.6:6.5; c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r); } c.fill(); } } }));
+    function paintCap(){ const C=LOOK_CAPS[LK.cap]||LOOK_CAPS.green; capM.map=null; capM.metalness=0; capM.roughness=.9;
+      if(goldCap){ capM.color.set(0xE9C25A); capM.metalness=.7; capM.roughness=.25; }
+      else if(C.pat){ capM.color.set(0xFFFFFF); capM.map=capTex(LK.cap,C.css); } else capM.color.set(C.c);
+      capM.needsUpdate=true; }
+    function setLook(L){ L=lookClean(L); Object.assign(LK,L); const S=LOOK_SCRUBS[LK.scrub]||LOOK_SCRUBS.teal; scrubM.color.set(S.c); scrub2M.color.set(S.c2); paintCap();
+      for(const k in ACC) ACC[k].visible=LK.acc.includes(k)&&!(k==="glasses"&&shadesOn);
+      tatK=LK.tat; drawFace(faceEx,false); }
     let outfitK="scrub";
     function setOutfit(k){ outfitK=k; const sw=k==="swim", hw=k==="hawaii", sc=!sw&&!hw;
       capAll.visible=sc; steth.visible=sc; badge.visible=sc; pen.visible=sc; pocket.visible=sc; vneck.visible=!sw;
@@ -1679,8 +1775,9 @@ async function buildWorld(){
       shoes.forEach(x=>{ x.visible=!sw; x.material=hw?sandalM:shoeM; x.scale.y=hw?.45:1; x.position.y=hw?-.98:-.92; });
       feet.forEach(f=>f.visible=sw); trunks.forEach(t=>t.visible=sw); shorts.forEach(t=>t.visible=hw);
       swimCap.visible=sw; hat.visible=hw; lei.visible=hw; ETT.visible=sc; TW.visible=sc; }
-    const setCap=(g)=>{ capM.color.set(g?0xE9C25A:CAP); capM.metalness=g?.7:0; capM.roughness=g?.25:.9; capM.needsUpdate=true; };
-    n.userData={body,legs,armR,armL,head,umb,ETT,TW,setShades:(v)=>{ shades.visible=v; },setOutfit,setFace,faceTick,setCap,get face(){ return faceEx; },get outfit(){ return outfitK; }};
+    const setCap=(g)=>{ goldCap=!!g; paintCap(); };
+    pocket.material=scrub2M; [armR.up,armL.up].forEach(u=>u.material=scrubM); legMeshes.forEach(l=>l.material=scrub2M);
+    n.userData={body,legs,armR,armL,head,umb,ETT,TW,setShades:(v)=>{ shades.visible=v; shadesOn=!!v; ACC.glasses.visible=LK.acc.includes("glasses")&&!shadesOn; },setOutfit,setFace,faceTick,setCap,setLook,get look(){ return {...LK,acc:[...LK.acc]}; },get face(){ return faceEx; },get outfit(){ return outfitK; }};
     return n;
   }
 
@@ -1901,8 +1998,8 @@ async function buildWorld(){
     n.scale.set(1.6,1.6,1); n.position.copy(p||nurse.position).add(new THREE.Vector3(0,2.6,0)); n.userData.t=0; scene.add(n); NOTES.push(n); }
   const SEA_FIND=["小丑魚","藍倒吊","海星","小章魚","海馬","小蝦","貝殼","珍珠","螃蟹","河豚"].map(n=>COL_BY[n]);
   function snorkelFind(){ const p=nurse.position.clone(); spray(p.clone().add(new THREE.Vector3(0,.4,0)),[0xBFEFFF,0xFFFFFF,0x8FD8F0],12,.08,2.4); const r=Math.random();
-    if(r<.3){ floatIcon("🪙"); addBonus(.1,"🤿 浮潛撿到一枚金幣!"); return; }
-    if(r<.5){ floatIcon("🗑️"); addBonus(.2,"🤿 把海裡的垃圾撿起來,好棒!"); return; }
+    if(r<.3){ floatIcon("🪙"); addBonus(.05,"🤿 浮潛撿到一枚金幣!"); return; }
+    if(r<.5){ floatIcon("🗑️"); addBonus(.1,"🤿 把海裡的垃圾撿起來,好棒!"); return; }
     if(r<.68&&$("wishPanel").hidden){ floatIcon("📜"); toast("🤿 撿到一個漂流瓶,裡面有一題!"); showWish({all:true}); return; }
     let it; if(Math.random()<.5) it=rollMed(); else { const tot=SEA_FIND.reduce((a,x)=>a+COL_W[x.r],0); let k=Math.random()*tot; it=SEA_FIND.find(x=>(k-=COL_W[x.r])<=0)||SEA_FIND[0]; }
     floatIcon(it.ic); const bag=bagAdd(it.n); toast(`🤿 浮潛抓到 ${it.ic} ${it.n}!<small>(${bag})</small>`,it.r>=3?"unlock":"coin"); react(it.r>=3?"unlock":"right"); }
@@ -2237,7 +2334,7 @@ async function buildWorld(){
         u.legs.forEach(l=>{ l.lg.rotation.x=u.pause>0?0:Math.sin(tt*12+l.ph)*.35; }); });
       // gulls: daytime and fair weather only
       const gullOK=night<.5&&!stormy;
-      // 海鷗的小任務:飛下來吃地上的垃圾(扣 0.2),或是停在小麻頭上啄一啄
+      // 海鷗的小任務:飛下來吃地上的垃圾(扣 0.1),或是停在小麻頭上啄一啄
       gullCD-=dt; if(gullOK&&gullCD<=0&&!gulls.some(b=>b.userData.job)){ gullCD=18+Math.random()*24;
         const lit=FALLEN.find(f=>litterFree(f)&&(f.userData.age||0)>8&&columnClear(f.position.x,f.position.z));
         const idle=mode==="idle"&&!walk&&!OFF&&!inHut&&!FISH&&!LOUNGE&&!bookEl&&!(ISL[3].room&&ISL[3].room.near(nurse.position.x,nurse.position.z));
@@ -2621,13 +2718,14 @@ async function buildWorld(){
     const hits=ray.intersectObjects([...clickables,...Object.values(D3).flatMap(d=>Object.values(d.books)),...Object.values(D3).filter(d=>d.shelf&&d.shelf.visible).map(d=>d.shelf),IV.g,STOOL.g,...LOUNGERS,...trees.filter(t=>t.visible),...LIFE.picks.filter(m=>m.visible),...BURIED.list.filter(m=>m.visible),...DRIFT.list.filter(m=>m.visible),...TURTLES.list.map(T=>T.g),...FALLEN.filter(m=>m.visible),...BEACH.castles,...BEACH.rings,...BEACH.boards,...BEACH.boats,...BEACH.hearts,...(CARRY?[]:[]),...(BEACH.vb.net?[BEACH.vb.net]:[]),...(FOUNTAIN?[FOUNTAIN]:[]),...(ORB.g.visible?[ORB.core]:[]),...SIGNS,nurse],true); for(const h of hits){ if(h.object.isSprite && h.object.material.opacity<.4) continue; { let hid=false, q=h.object; while(q){ if(!q.visible){ hid=true; break; } q=q.parent; } if(hid) continue; } let o=h.object; while(o&&!o.userData.sys&&!o.userData.topic&&!o.userData.shelf&&!o.userData.iv&&!o.userData.stool&&!o.userData.lounger&&!o.userData.act&&!o.userData.orb&&!o.userData.nurseHit&&o.userData.isl===undefined) o=o.parent; if(o) return o; } return null; };
   renderer.domElement.addEventListener("pointerdown",e=>{ downAt=[e.clientX,e.clientY]; });
   renderer.domElement.addEventListener("pointerup",e=>{ $("tip3").hidden=true; if(!downAt) return; const moved=Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1]); downAt=null; if(moved>6) return;
+    if(DECO.mode){ decoClick(e); return; }
     const o=pick(e); if(OFF&&o&&(o.userData.sys||o.userData.shelf)){ const sid=o.userData.sys||o.userData.shelf; offEnd(()=>goDistrict(sid)); return; } if(o&&o.userData.isl!==undefined){ goIsland(o.userData.isl); return; } if(OFF) return; if(o&&o.userData.nurseHit){ if(FISH) return; if(hasSkill("dance")) dance(); else lockMsg("dance"); return; } if(o&&o.userData.orb){ useOrb(); return; } const mouse=e.pointerType==="mouse";
     if(o&&o.userData.stool){ if(onStool){ toggleStool(); return; } hideOrb(); if(!hasSkill("stool")){ lockMsg("stool"); return; } toggleStool(); return; }
     if(o&&o.userData.iv){ if(holdIV){ toggleIV(); return; } hideOrb(); if(!hasSkill("iv")){ lockMsg("iv"); return; } toggleIV(); return; }
     if(o&&o.userData.lounger){ if(LOUNGE&&LOUNGE.g===o){ loungeEnd(); return; } hideOrb(); lounge(o); return; }
     if(o&&o.userData.act){ if(OFF) return; hideOrb(); actOn(o.userData.act,o); return; } if(!o){ if(ray.ray.intersectPlane(groundPlane,gHit)) walkHere(gHit.clone()); return; } if(o.userData.topic){ const tt0=byId[o.userData.topic]; if(e.pointerType!=="mouse" && tt0 && tt0.sys===focus) openShelfMenu(focus); else openFromShelf(o.userData.topic); } else if(o.userData.shelf){ if(o.userData.shelf===focus) openShelfMenu(focus); else goDistrict(o.userData.shelf); } else if(o.userData.sys){ if(o.userData.sys===focus && D3[focus].rise>.9) openShelfMenu(focus); else goDistrict(o.userData.sys); } });
   renderer.domElement.addEventListener("pointerleave",()=>{ if(ORB.hover) hideOrb(); if(hintK){ hintK=null; setHud(); } });
-  renderer.domElement.addEventListener("pointermove",e=>{ if(e.pointerType!=="mouse") return; const o=pick(e);
+  renderer.domElement.addEventListener("pointermove",e=>{ if(e.pointerType!=="mouse") return; if(DECO.mode){ renderer.domElement.style.cursor=DECO.mode==="remove"?"not-allowed":"crosshair"; if(DECO.mode==="remove"&&decoHit(e)) renderer.domElement.style.cursor="pointer"; return; } const o=pick(e);
     { const k=o&&(o.userData.iv?"iv":o.userData.stool?"stool":o.userData.lounger?"lounge":o.userData.act||null); const busy=(k==="iv"&&holdIV)||(k==="stool"&&onStool)||(k==="lounge"&&LOUNGE&&LOUNGE.g===o);
       const plain=!!k; /* 可互動的東西都用手指游標表示,不顯示光球,只顯示提示文字 */
       if(k&&!busy&&!OFF&&plain){ if(ORB.hover) hideOrb(); $("hint").textContent=HOVER_TXT[k]; hintK=k; }
@@ -2776,7 +2874,7 @@ async function buildWorld(){
     if(k==="iv"){ if(!holdIV&&!hasSkill("iv")){ lockMsg("iv"); return; } toggleIV(); }
     else if(k==="stool"){ if(!onStool&&!hasSkill("stool")){ lockMsg("stool"); return; } toggleStool(); }
     else if(k==="lounge") lounge(obj); else actOn(k,obj); }
-  /* ================= 沙灘上埋著的金幣(撿到 +0.1):露出一點邊緣、偶爾閃一下 ================= */
+  /* ================= 沙灘上埋著的金幣(撿到 +0.05):露出一點邊緣、偶爾閃一下 ================= */
   const STAR=tex(128,128,(c,w,h)=>{ const g2=c.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); g2.addColorStop(0,"rgba(255,255,240,1)"); g2.addColorStop(.25,"rgba(255,230,140,.6)"); g2.addColorStop(1,"rgba(255,210,80,0)"); c.fillStyle=g2; c.fillRect(0,0,w,h);
     c.fillStyle="rgba(255,255,255,.95)"; c.beginPath(); const m=w/2; c.moveTo(m,4); c.quadraticCurveTo(m,m,w-4,m); c.quadraticCurveTo(m,m,m,h-4); c.quadraticCurveTo(m,m,4,m); c.quadraticCurveTo(m,m,m,4); c.fill(); });
   const BURIED=(()=>{ const list=[], coinM=M(0xFFD54A,{metalness:.6,roughness:.2,emissive:0xC99A10,emissiveIntensity:.55}), sandM=M(0xE9CF9C,{roughness:.95});
@@ -2807,7 +2905,7 @@ async function buildWorld(){
   const bagAdd=(k)=>colAdd(k);
   // 地上的垃圾:小麻正要去撿的那個,海鷗和海龜不搶;被吃掉就從場景移除
   const litterFree=(f)=>f.userData.item==="垃圾"&&f.userData.rest&&f.visible&&FALLEN.includes(f)&&!(BUSY&&BUSY.obj===f)&&!(f.userData.claimedAt&&performance.now()-f.userData.claimedAt<9000);
-  function eatLitter(f,who){ if(inSuite()) return false; const i=FALLEN.indexOf(f); if(i<0||!litterFree(f)) return false; FALLEN.splice(i,1); scene.remove(f); spray(f.position.clone().add(new THREE.Vector3(0,.3,0)),[0xFFFFFF,0xCCCCCC],8,.07,1.8); addBonus(-.2,who==="gull"?"🐦 海鷗把垃圾吃下肚了⋯⋯":"🐢 海龜誤吃了垃圾⋯⋯"); return true; }
+  function eatLitter(f,who){ if(inSuite()) return false; const i=FALLEN.indexOf(f); if(i<0||!litterFree(f)) return false; FALLEN.splice(i,1); scene.remove(f); spray(f.position.clone().add(new THREE.Vector3(0,.3,0)),[0xFFFFFF,0xCCCCCC],8,.07,1.8); addBonus(-.1,who==="gull"?"🐦 海鷗把垃圾吃下肚了⋯⋯":"🐢 海龜誤吃了垃圾⋯⋯"); return true; }
   function prep(){ $("wishPanel").hidden=true; fishEnd(); boatEnd(); releaseIV(); if(bookEl) closeBook(); danceT=0;
     if(focus){ focus=null; target=null; setHud(); try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} } }
   function besides(obj,dist){ const op=obj.position; let away=new THREE.Vector3(nurse.position.x-op.x,0,nurse.position.z-op.z); if(away.lengthSq()<.01) away.set(0,0,1); away.normalize(); return new THREE.Vector3(op.x,0,op.z).addScaledVector(away,dist); }
@@ -2886,7 +2984,7 @@ async function buildWorld(){
       if(!B.thrown){ B.thrown=true; ud.armR.hand.remove(B.food); ud.head.rotation.x=0;
         const cup=B.S[0]==="飲料", lit=mkLitter(B.S[3],cup); const hand=ud.armR.hand.getWorldPosition(new THREE.Vector3()); lit.position.copy(hand);
         const a=Math.random()*Math.PI*2, sp=1.6+Math.random()*1.4; lit.userData={v:new THREE.Vector3(Math.cos(a)*sp,3.2,Math.sin(a)*sp),t:0,act:"pick",item:"垃圾",fallen:true}; scene.add(lit); FALLEN.push(lit); while(FALLEN.length>30){ const o=FALLEN.shift(); scene.remove(o); }
-        toast(`😋 吃完了⋯⋯${cup?"杯子":"包裝"}隨手一丟!<small>(點垃圾撿起來 +0.2 金幣;被海鷗或海龜吃掉會 −0.2)</small>`); }
+        toast(`😋 吃完了⋯⋯${cup?"杯子":"包裝"}隨手一丟!<small>(點垃圾撿起來 +0.1 金幣;被海鷗或海龜吃掉會 −0.1)</small>`); }
       const kk=Math.min(1,(B.t-bites*per)/.5); ud.armR.sh.rotation.set(-.4-Math.sin(kk*Math.PI)*1.6,0,.15); ud.armR.fore.rotation.x=-.3;
       if(B.t>bites*per+.7){ BUSY=null; mode="idle"; } return; }
     if(B.k==="vball"){ const net=B.net, ball=net.userData.ball, HITS=6, per=1.2; const i=Math.floor(B.t/per), k=(B.t-i*per)/per;
@@ -2923,7 +3021,7 @@ async function buildWorld(){
     if(B.k==="pick"){ const o=B.obj, crab=o.userData.item==="寄居蟹"; const k=Math.min(1,B.t/.6); ud.body.position.y=-.5*Math.sin(Math.min(1,B.t/.9)*Math.PI); ud.body.rotation.x=.35*Math.sin(Math.min(1,B.t/.9)*Math.PI);
       const hand=nurse.position.clone().add(new THREE.Vector3(0,crab?4.6:3.0,0));
       if(B.t>.45){ const k2=Math.min(1,(B.t-.45)/.5); o.position.lerpVectors(B.from,hand,k2); if(!crab) o.scale.setScalar(Math.max(.05,(o.userData.s0||(o.userData.s0=o.scale.x))*(1-k2*.5))); }
-      if(B.t>1.0&&!B.done&&(o.userData.item==="金幣"||o.userData.item==="垃圾")){ B.done=true; if(o.userData.item==="金幣") addBonus(.1,"🪙 找到埋藏的金幣!"); else addBonus(.2,"🗑️ 把垃圾撿起來丟掉,好棒!"); }
+      if(B.t>1.0&&!B.done&&(o.userData.item==="金幣"||o.userData.item==="垃圾")){ B.done=true; if(o.userData.item==="金幣") addBonus(.05,"🪙 找到埋藏的金幣!"); else addBonus(.1,"🗑️ 把垃圾撿起來丟掉,好棒!"); }
       if(B.t>1.0&&!B.done&&o.userData.item==="漂流瓶"){ B.done=true; bagAdd("漂流瓶"); const it=Math.random()<.08?COL_BY["珍珠"]:rollMed(); const bag=bagAdd(it.n); toast(`🍾 打開漂流瓶,裡面是 ${it.ic} ${it.n}!<small>(${bag})</small>`,it.r>=3?"unlock":"coin"); react(it.r>=3?"unlock":"right"); }
       if(B.t>1.0&&!B.done){ B.done=true; const bag=bagAdd(o.userData.item); toast(`${crab?"🦀":o.userData.item==="莓果"?"🍒":o.userData.item==="椰子"?"🥥":o.userData.item==="海星"?"⭐":"🐚"} 撿到${o.userData.item}!<small>(${bag})</small>`,"coin"); react("right"); }
       if(crab){ ud.armR.sh.rotation.set(-2.8,0,.3); ud.armL.sh.rotation.set(-2.8,0,-.3); if(B.t>2.6){ o.position.copy(B.from); o.userData.held=false; o.userData.pause=2; endPick(); } return; }
@@ -3425,6 +3523,8 @@ async function buildWorld(){
         controls.target.lerp(want,Math.min(1,rdt*3)); camera.position.copy(controls.target).add(off); }
       else { const v=chase.vw; chase=null; tweenCam(v.pos,v.tgt,1500); } }
     if(camTween){ const k=Math.min(1,(now-camTween.s)/camTween.d), e=ease(k); camera.position.lerpVectors(camTween.p0,camTween.p1,e); controls.target.lerpVectors(camTween.t0,camTween.t1,e); if(k>=1){ camTween=null; controls.enabled=true; } }
+    if(FOLLOW&&NET.role==="guest"&&NET.follow){ camTween=null; chase=null; controls.enabled=false; const k=Math.min(1,rdt*5); camera.position.lerp(_fp.set(FOLLOW[0],FOLLOW[1],FOLLOW[2]),k); controls.target.lerp(_ft.set(FOLLOW[3],FOLLOW[4],FOLLOW[5]),k); }
+    if(DECO.list.length) decoTick(dt,tt);
     { const t=controls.target; const ox=t.x-ARCH_C.x, oz=t.z-ARCH_C.z, r=Math.hypot(ox,oz), R=125; if(r>R){ const k=R/r, dx=ox*(k-1), dz=oz*(k-1); t.x+=dx; t.z+=dz; camera.position.x+=dx; camera.position.z+=dz; } if(t.y<-4){ camera.position.y+=-4-t.y; t.y=-4; } if(t.y>40){ camera.position.y-=t.y-40; t.y=40; } }
     controls.update(); closeUp = camera.position.distanceTo(controls.target) < 30;
     // stickers bob, shelves grow, books lift
@@ -3443,6 +3543,64 @@ async function buildWorld(){
     if(focus){ const d=D3[focus]; const a=camera.position, b=new THREE.Vector3(d.c.x,TOP+3,d.c.z), p=new THREE.Vector3(HUT.pos.x,TOP+4,HUT.pos.z); const ab=b.clone().sub(a); const k=Math.max(0,Math.min(1,p.clone().sub(a).dot(ab)/ab.lengthSq())); HUT.g.visible=a.clone().addScaledVector(ab,k).distanceTo(p)>7.5; } else HUT.g.visible=true;
     renderer.render(scene,camera); placeLabels();
   });
+
+  /* ---------- 島嶼佈置:從佈置面板選東西,點島上的地面放下去(存在 localStorage 的 island-deco:[種類, x, z, 角度]) ----------
+     放置模式中點已經放好的東西會轉 45°;收起模式點一下就收起來。朋友來你的島時看到的是你的佈置。 */
+  const DECO={list:[],mode:null,shown:null,t:0};
+  const decoBuild={
+    pot:()=>{ const g=new THREE.Group(); const p=new THREE.Mesh(new THREE.CylinderGeometry(.55,.4,.7,16),M(0xC8724A)); p.position.y=.35; g.add(p); const rim=new THREE.Mesh(new THREE.TorusGeometry(.55,.07,6,20),M(0xB5643E)); rim.rotation.x=Math.PI/2; rim.position.y=.7; g.add(rim);
+      [[0,0,0xFF7A8A],[.25,.15,0xFFD94A],[-.22,.18,0xB57EDC],[.05,-.25,0xFFFFFF]].forEach(([x,z,c],i)=>{ const st=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.7+i*.08,5),M(0x3E8E4E)); st.position.set(x,1.05+i*.04,z); g.add(st); const f=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),M(c)); f.position.set(x,1.42+i*.08,z); g.add(f); }); return g; },
+    tree:()=>{ const g=new THREE.Group(); const t=new THREE.Mesh(new THREE.CylinderGeometry(.22,.3,2.2,8),M(0x8A5A3A)); t.position.y=1.1; g.add(t); [[0,3.0,0,1.5],[.7,2.6,.3,1.0],[-.6,2.7,-.3,1.1]].forEach(([x,y,z,r])=>{ const c=new THREE.Mesh(new THREE.IcosahedronGeometry(r,1),M(0x58A55C,{flatShading:true})); c.position.set(x,y,z); g.add(c); }); return g; },
+    lamp:()=>{ const g=new THREE.Group(); const dk=M(0x2F3A40,{metalness:.4,roughness:.4}); const b=new THREE.Mesh(new THREE.CylinderGeometry(.3,.38,.25,12),dk); b.position.y=.12; g.add(b); const pl=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,4,8),dk); pl.position.y=2.1; g.add(pl);
+      const gl=new THREE.Mesh(new THREE.SphereGeometry(.38,14,12),new THREE.MeshStandardMaterial({color:0xFFF2C2,emissive:0xFFD87A,emissiveIntensity:.9})); gl.position.y=4.35; g.add(gl); const top=new THREE.Mesh(new THREE.ConeGeometry(.45,.35,12),dk); top.position.y=4.8; g.add(top); return g; },
+    bench:()=>{ const g=new THREE.Group(); const wd=M(0xB07A4A), ir=M(0x3B4248,{metalness:.4}); const seat=new THREE.Mesh(new RoundedBoxGeometry(3,.15,.8,2,.04),wd); seat.position.y=.9; g.add(seat); const back=new THREE.Mesh(new RoundedBoxGeometry(3,.6,.12,2,.04),wd); back.position.set(0,1.45,-.38); back.rotation.x=-.12; g.add(back);
+      for(const x of [-1.3,1.3]) for(const z of [-.3,.3]){ const l=new THREE.Mesh(new THREE.BoxGeometry(.12,.9,.12),ir); l.position.set(x,.45,z); g.add(l); } return g; },
+    umb:()=>{ const g=new THREE.Group(); const pl=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3.6,8),M(0xF4F4F4)); pl.position.y=1.8; g.add(pl);
+      const st=tex(512,64,(c,w,h)=>{ for(let i=0;i<8;i++){ c.fillStyle=i%2?"#FFFFFF":"#3FA9F5"; c.fillRect(i*w/8,0,w/8,h); } }); const cn=new THREE.Mesh(new THREE.ConeGeometry(2.2,.8,8,1,true),new THREE.MeshStandardMaterial({map:st,side:THREE.DoubleSide,roughness:.7})); cn.position.y=3.6; g.add(cn); return g; },
+    flag:()=>{ const g=new THREE.Group(); const pl=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,5,8),M(0xD7DEE6,{metalness:.5})); pl.position.y=2.5; g.add(pl); const ball=new THREE.Mesh(new THREE.SphereGeometry(.12,8,6),M(0xF2C94C,{metalness:.5})); ball.position.y=5.05; g.add(ball);
+      const ft=tex(128,80,(c,w,h)=>{ c.fillStyle="#F29BB8"; c.fillRect(0,0,w,h); c.fillStyle="#fff"; c.fillRect(w/2-9,16,18,48); c.fillRect(w/2-24,31,48,18); }); const fl=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1,8,1),new THREE.MeshStandardMaterial({map:ft,side:THREE.DoubleSide,roughness:.8})); fl.position.set(.82,4.4,0); fl.userData.wave=true; g.add(fl); return g; },
+    rock:()=>{ const g=new THREE.Group(); [[0,.5,0,.8],[.7,.3,.3,.45],[-.5,.25,.4,.35]].forEach(([x,y,z,r])=>{ const m=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),M(0x9AA0A6,{flatShading:true})); m.position.set(x,y,z); m.rotation.set(x,y*3,z); g.add(m); }); return g; },
+    balloon:()=>{ const g=new THREE.Group(); const wt=new THREE.Mesh(new THREE.CylinderGeometry(.2,.25,.3,10),M(0x8A929C)); wt.position.y=.15; g.add(wt); const fl=new THREE.Group(); fl.userData.bob=true; g.add(fl);
+      [[0,5,0,0xE8456B],[.6,4.6,.2,0x3FA9F5],[-.55,4.7,-.1,0xF2C94C]].forEach(([x,y,z,c])=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(.55,14,12),M(c,{roughness:.25})); b.scale.y=1.18; b.position.set(x,y,z); fl.add(b);
+        fl.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(new THREE.Vector3(0,.3,0),new THREE.Vector3(x,y-.6,z)),2,.012,4,false),M(0xF4F4F4))); }); return g; },
+    mush:()=>{ const g=new THREE.Group(); const st=new THREE.Mesh(new THREE.CylinderGeometry(.28,.35,1,12),M(0xF6EEDD)); st.position.y=.5; g.add(st); const cp=new THREE.Mesh(new THREE.SphereGeometry(.85,18,10,0,Math.PI*2,0,Math.PI/2),M(0xE05B5B)); cp.position.y=.95; g.add(cp);
+      for(let i=0;i<7;i++){ const a=i/7*Math.PI*2, d=new THREE.Mesh(new THREE.SphereGeometry(.12,8,6),M(0xFFFFFF)); d.position.set(Math.cos(a)*.55,1.4,Math.sin(a)*.55); g.add(d); } const d0=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),M(0xFFFFFF)); d0.position.y=1.82; g.add(d0); return g; },
+    xmas:()=>{ const g=new THREE.Group(); const t=new THREE.Mesh(new THREE.CylinderGeometry(.2,.25,.6,8),M(0x8A5A3A)); t.position.y=.3; g.add(t); [[1.5,1.6,1.2],[1.15,1.4,2.2],[.8,1.2,3.1]].forEach(([r,h,y])=>{ const c=new THREE.Mesh(new THREE.ConeGeometry(r,h,10),M(0x2E8B57)); c.position.y=y; g.add(c); });
+      const star=new THREE.Mesh(new THREE.OctahedronGeometry(.28),new THREE.MeshStandardMaterial({color:0xFFD94A,emissive:0xF2B705,emissiveIntensity:.7})); star.position.y=3.95; g.add(star);
+      [[.9,1.4,.6,0xE05B5B],[-.7,2.2,.6,0x3FA9F5],[.4,2.9,.5,0xF2C94C],[-.9,1.3,-.5,0xF2C94C],[.6,2.1,-.6,0xE05B5B]].forEach(([x,y,z,c])=>{ const o=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.35})); o.position.set(x,y,z); g.add(o); }); return g; },
+    cactus:()=>{ const g=new THREE.Group(); const cm=M(0x4F9A5A); const p=new THREE.Mesh(new THREE.CylinderGeometry(.5,.4,.6,12),M(0xE6D3A3)); p.position.y=.3; g.add(p); const b=new THREE.Mesh(new THREE.CapsuleGeometry(.32,1.4,6,10),cm); b.position.y=1.5; g.add(b);
+      [[-1,1.5],[1,1.9]].forEach(([sx,y])=>{ const a=new THREE.Mesh(new THREE.CapsuleGeometry(.17,.45,4,8),cm); a.position.set(sx*.48,y,0); g.add(a); const a2=new THREE.Mesh(new THREE.CapsuleGeometry(.15,.2,4,8),cm); a2.rotation.z=Math.PI/2; a2.position.set(sx*.32,y-.3,0); g.add(a2); }); const fl=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),M(0xFF7A8A)); fl.position.y=2.55; g.add(fl); return g; },
+    sign:()=>{ const g=new THREE.Group(); const wd=M(0xA66F42); const pl=new THREE.Mesh(new THREE.BoxGeometry(.18,2.4,.18),wd); pl.position.y=1.2; g.add(pl);
+      const nm=(PLAYER.name||"小麻")+" 的島"; const bt=tex(320,120,(c,w,h)=>{ c.fillStyle="#D9A96A"; c.fillRect(0,0,w,h); c.strokeStyle="#8A5A3A"; c.lineWidth=8; c.strokeRect(4,4,w-8,h-8); c.fillStyle="#5A3A22"; c.textAlign="center"; c.textBaseline="middle"; let fs=52; do{ c.font=`700 ${fs}px "Huninn","Noto Sans TC",sans-serif`; fs-=2; }while(c.measureText(nm).width>w-30&&fs>16); c.fillText(nm,w/2,h/2+2); });
+      const bd=new THREE.Mesh(new RoundedBoxGeometry(2.4,.9,.12,2,.04),[wd,wd,wd,wd,new THREE.MeshStandardMaterial({map:bt,roughness:.8}),new THREE.MeshStandardMaterial({map:bt,roughness:.8})]); bd.position.y=2.2; g.add(bd); return g; },
+    snowman:()=>{ const g=new THREE.Group(); const sw=M(0xFAFCFF,{roughness:.6}); [[0,.7,.75],[0,1.75,.55],[0,2.55,.4]].forEach(([x,y,r])=>{ const b=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),sw); b.position.set(x,y,0); g.add(b); });
+      const nose=new THREE.Mesh(new THREE.ConeGeometry(.07,.35,8),M(0xF28C28)); nose.rotation.x=Math.PI/2; nose.position.set(0,2.55,.5); g.add(nose); for(const sx of [-.13,.13]){ const e=new THREE.Mesh(new THREE.SphereGeometry(.045,6,6),M(0x222222)); e.position.set(sx,2.68,.36); g.add(e); }
+      const sc=new THREE.Mesh(new THREE.TorusGeometry(.42,.09,6,18),M(0xE05B5B)); sc.rotation.x=Math.PI/2; sc.position.y=2.2; g.add(sc); const hat=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.45,14),M(0x2B2F38)); hat.position.y=3.0; g.add(hat); const br=new THREE.Mesh(new THREE.CylinderGeometry(.45,.45,.05,16),M(0x2B2F38)); br.position.y=2.8; g.add(br); return g; },
+    heart:()=>{ const g=new THREE.Group(); const sh=new THREE.Shape(); sh.moveTo(0,-1); sh.bezierCurveTo(-1.6,0,-1,1.2,0,.5); sh.bezierCurveTo(1,1.2,1.6,0,0,-1);
+      const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.3,bevelEnabled:true,bevelSize:.08,bevelThickness:.08,bevelSegments:2}),new THREE.MeshStandardMaterial({color:0xF06C8F,emissive:0xE8456B,emissiveIntensity:.25,roughness:.4})); m.position.set(0,2.3,-.15); g.add(m);
+      const pl=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.4,8),M(0xD7DEE6)); pl.position.y=.7; g.add(pl); return g; }};
+  const DECO_R={pot:.8,tree:1.6,lamp:.6,bench:1.6,umb:.8,flag:.5,rock:1.1,balloon:.6,mush:.9,xmas:1.5,cactus:.7,sign:1.3,snowman:.8,heart:1.1};
+  function decoOK(x,z){ const p=new THREE.Vector3(x,0,z), I=islandAt(p), r=Math.hypot(x-I.c.x,z-I.c.z); if(r>I.R-1.2) return false; if(I.ring&&r<I.ring+.6) return false; if(suiteP(p)||(I.room&&I.room.inside(p))) return false;
+    for(const d of Object.values(D3)) if(Math.hypot(d.c.x-x,d.c.z-z)<PR+.5) return false; if(Math.hypot(HUT.pos.x-x,HUT.pos.z-z)<7) return false; if(ISL[3].room&&ISL[3].room.near&&ISL[3].room.near(x,z)) return false; return true; }
+  function decoMake(k,x,z,r){ const f=decoBuild[k]; if(!f) return null; const g=f(); g.position.set(x,groundY(x,z),z); g.rotation.y=r; g.userData.deco=k; shadowy(g); scene.add(g); return g; }
+  function decoRender(list){ DECO.list.forEach(d=>scene.remove(d.g)); DECO.list=[]; (list||[]).forEach(([k,x,z,r])=>{ const g=decoMake(k,x,z,r); if(g) DECO.list.push({k,x,z,r,g}); }); }
+  function decoSave(){ try{ localStorage.setItem("island-deco",JSON.stringify(DECO.list.map(d=>[d.k,+d.x.toFixed(2),+d.z.toFixed(2),+d.r.toFixed(3)]))); }catch(e){} if(typeof netDecoSend==="function") netDecoSend(); }
+  function decoMine(){ try{ return decoClean(JSON.parse(localStorage.getItem("island-deco")||"[]")); }catch(e){ return []; } }
+  function decoClean(a){ return (Array.isArray(a)?a:[]).filter(d=>Array.isArray(d)&&decoBuild[d[0]]&&[d[1],d[2],d[3]].every(v=>Number.isFinite(+v))&&decoOK(+d[1],+d[2])).slice(0,DECO_MAX).map(d=>[d[0],+d[1],+d[2],+d[3]]); }
+  function decoHit(e){ const r=renderer.domElement.getBoundingClientRect(); ptr.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ptr,camera);
+    const h=ray.intersectObjects(DECO.list.map(d=>d.g),true)[0]; if(!h) return null; let o=h.object; while(o&&!o.userData.deco) o=o.parent; return DECO.list.find(d=>d.g===o)||null; }
+  function decoClick(e){ if(DECO.shown){ toast("🏝️ 這是朋友的島,不能動他的佈置喔"); return; } const hit=decoHit(e);
+    if(DECO.mode==="remove"){ if(!hit){ toast("🧹 點一下要收起來的東西"); return; } scene.remove(hit.g); DECO.list.splice(DECO.list.indexOf(hit),1); poof(hit.g.position.clone()); decoSave(); return; }
+    if(hit){ hit.r+=Math.PI/4; hit.g.rotation.y=hit.r; decoSave(); return; }
+    if(!ray.ray.intersectPlane(groundPlane,gHit)) return; const x=gHit.x, z=gHit.z;
+    if(!decoOK(x,z)){ toast("🚧 這裡不能放:要放在島上的空地(不能放在書櫃、小木屋、麻醉機旁或手術室裡)"); return; }
+    if(DECO.list.length>=DECO_MAX){ toast(`島上最多放 ${DECO_MAX} 樣東西,先收起一些吧`); return; }
+    for(const d of DECO.list) if(Math.hypot(d.x-x,d.z-z)<(DECO_R[d.k]+DECO_R[DECO.mode])*.7){ toast("太擠了,換個地方放吧"); return; }
+    const r=Math.atan2(camera.position.x-x,camera.position.z-z); const g=decoMake(DECO.mode,x,z,r); if(!g) return; DECO.list.push({k:DECO.mode,x,z,r,g}); poof(g.position.clone()); decoSave(); }
+  function decoTick(dt,tt){ for(const d of DECO.list){ d.g.children.forEach(c=>{ if(c.userData.bob){ c.position.y=Math.sin(tt*1.3+d.x)*.18; c.rotation.z=Math.sin(tt*.9+d.z)*.05; } if(c.userData.wave){ const pa=c.geometry.attributes.position; for(let i=0;i<pa.count;i++){ const x=pa.getX(i)+.8; pa.setZ(i,Math.sin(tt*4-x*3)*.12*x); } pa.needsUpdate=true; } }); } }
+  decoRender(decoMine());
+  /* ---------- 連線:朋友來我的島時,畫面跟著邀請者的視角(朋友可以切換成自由視角) ---------- */
+  let FOLLOW=null; const _fp=new THREE.Vector3(), _ft=new THREE.Vector3();
   /* ---------- 連線:朋友的小麻(依對方傳來的位置、姿勢、服裝、表情畫出來,頭上有名字與正在做的事) ---------- */
   const REMOTE=new Map(), _rq=new THREE.Quaternion(), _rv=new THREE.Vector3();
   function remoteLab(R){ R.lab.querySelector("b").textContent=(R.prof.name||"朋友")+" · "+R.prof.role; R.lab.querySelector("span").textContent=R.sayT>0?"💬 "+R.say:(R.st&&R.st.a)||""; R.lab.classList.toggle("sna",R.prof.role==="SNA"); }
@@ -3450,7 +3608,7 @@ async function buildWorld(){
     if(R){ R.prof=prof; const b=R.g.getObjectByName("badge"); if(b){ b.material.map=tex(256,150,(g,w,h)=>drawBadge(g,w,h,prof)); b.material.needsUpdate=true; } remoteLab(R); return; }
     const g=buildNurse(prof); g.scale.setScalar(NS); g.visible=false; shadowy(g); scene.add(g); g.userData.ETT.visible=false; g.userData.TW.visible=false;
     const lab=document.createElement("div"); lab.className="plab off"; lab.innerHTML="<b></b><span></span>"; $("labels").appendChild(lab);
-    R={g,prof,lab,st:null,o:"scrub",f:"smile",say:"",sayT:0}; REMOTE.set(id,R); remoteLab(R); }
+    R={g,prof,lab,st:null,o:"scrub",f:"smile",lk:"",say:"",sayT:0}; REMOTE.set(id,R); remoteLab(R); }
   function netDel(id){ const R=REMOTE.get(id); if(!R) return; scene.remove(R.g); R.lab.remove(); REMOTE.delete(id); }
   function netUpd(id,d){ const R=REMOTE.get(id); if(!R) return; const A=(x,n)=>Array.isArray(x)&&x.length===n&&x.every(v=>Number.isFinite(+v))?x.map(Number):null;
     const st={p:A(d.p,3),q:A(d.q,4),s:Number.isFinite(+d.s)?Math.max(.5,Math.min(2,+d.s)):NS,b:A(d.b,4),l:A(d.l,4),ar:A(d.ar,4),al:A(d.al,4),h:Number.isFinite(+d.h)?+d.h:0,
@@ -3459,6 +3617,7 @@ async function buildWorld(){
     if(first){ R.g.position.set(...st.p); R.g.quaternion.set(...st.q).normalize(); R.g.visible=true; R.lab.classList.remove("off"); }
     if(st.o!==R.o){ R.o=st.o; R.g.userData.setOutfit(st.o); R.g.userData.ETT.visible=false; R.g.userData.TW.visible=false; }
     if(st.f!==R.f){ R.f=st.f; R.g.userData.setFace(st.f); }
+    if(d.lk&&typeof d.lk==="object"){ const L=lookClean(d.lk), key=JSON.stringify(L); if(key!==R.lk){ R.lk=key; R.g.userData.setLook(L); R.g.userData.setCap(!!d.gd); } }
     remoteLab(R); }
   function netSay(id,x){ const R=REMOTE.get(id); if(!R) return; R.say=x; R.sayT=4; remoteLab(R); }
   function netTick(dt){ if(!REMOTE.size) return; const k=Math.min(1,dt*10), L=(a,b)=>a+(b-a)*k, w=stage.clientWidth, h=stage.clientHeight;
@@ -3474,8 +3633,13 @@ async function buildWorld(){
   function netSelf(){ const ud=nurse.userData, b=ud.body, r=(v)=>Math.round(v*1000)/1000, q=nurse.quaternion, p=nurse.position, arm=(a)=>[a.sh.rotation.x,a.sh.rotation.y,a.sh.rotation.z,a.fore.rotation.x].map(r);
     const a=FISH?"🎣 釣魚中":OFF?({free:SNORKEL?"🤿 浮潛中":"🏊 游泳中",swim:"🐬 騎海豚",hawaii:"⛵ 開帆船",surf:"🏄 衝浪中"}[OFF.kind]||"🏖️ 下班中"):danceT>0?"💃 跳舞中":ISL[3].room.inside(p)?"🏥 模擬開刀房":bookEl?"📖 看書中":LOUNGE?"🏖️ 躺椅休息":"";
     return {p:[r(p.x),r(p.y),r(p.z)],q:[r(q.x),r(q.y),r(q.z),r(q.w)],s:r(nurse.scale.x),b:[r(b.position.y),r(b.rotation.x),r(b.rotation.y),r(b.rotation.z)],
-      l:[ud.legs[0].rotation.x,ud.legs[0].rotation.z,ud.legs[1].rotation.x,ud.legs[1].rotation.z].map(r),ar:arm(ud.armR),al:arm(ud.armL),h:r(ud.head.rotation.y),o:ud.outfit,f:ud.face,a,i:islandAt(p).i}; }
+      l:[ud.legs[0].rotation.x,ud.legs[0].rotation.z,ud.legs[1].rotation.x,ud.legs[1].rotation.z].map(r),ar:arm(ud.armR),al:arm(ud.armL),h:r(ud.head.rotation.y),o:ud.outfit,f:ud.face,a,i:islandAt(p).i,lk:ud.look,gd:gold,
+      c:NET.role==="host"?[camera.position.x,camera.position.y,camera.position.z,controls.target.x,controls.target.y,controls.target.z].map(r):undefined}; }
   return {goDistrict,focus:()=>focus,pickBook,closeBook:()=>{ openId=null; },
+    setLook:(L)=>{ nurse.userData.setLook(L); nurse.userData.setCap(gold); }, lookAtNurse:()=>{ const n=nurse.position, f=new THREE.Vector3(0,0,1).applyQuaternion(nurse.quaternion).setY(0).normalize(); if(f.lengthSq()<.1) f.set(0,0,1); const tgt=new THREE.Vector3(n.x,n.y+3.4,n.z); tweenCam(tgt.clone().addScaledVector(f,11).add(new THREE.Vector3(0,2.2,0)),tgt,900); faceCamera=true; },
+    decoMode:(k)=>{ DECO.mode=k||null; renderer.domElement.style.cursor=k?"crosshair":""; }, decoList:()=>DECO.list.map(d=>[d.k,+d.x.toFixed(2),+d.z.toFixed(2),+d.r.toFixed(3)]), decoCount:()=>DECO.list.length,
+    decoShow:(list)=>{ if(list){ DECO.shown=true; decoRender(decoClean(list)); } else if(DECO.shown){ DECO.shown=null; decoRender(decoMine()); } }, decoClear:()=>{ DECO.list.forEach(d=>scene.remove(d.g)); DECO.list=[]; decoSave(); },
+    camFollow:(c)=>{ FOLLOW=c; if(!c) controls.enabled=true; },
     orSet:(v)=>OR.set(v), orGet:()=>OR.get(), orHelp:()=>{ OR.help(); netFx("orHelp"); }, orCPR:(on)=>{ OR.cpr(on); netFx("orCPR",!!on); }, orShock:()=>{ OR.shock(); netFx("orShock"); }, orReset:()=>{ OR.reset(); netFx("orReset"); }, orHandoffFx:()=>OR.handoff(()=>{}), netAdd, netDel, netUpd, netSay, netSelf,
     orHandoff:(cb)=>{ netFx("orHandoff"); let a=false,b=false; const fin=()=>{ if(a&&b) cb&&cb(); };
       // 小麻和巡迴護理師一起推床:小麻先走到推床床尾,再推著床出門、沿牆外繞到恢復室
