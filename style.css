@@ -328,6 +328,7 @@ body.immersive .reset{bottom:max(14px,env(safe-area-inset-bottom,0px));right:max
 .orpanel .end b{display:block;font-size:19px;margin-bottom:4px}
 .orpanel .end.dead{background:#3A1F24;color:#FFE3E3}
 .orpanel .end.ok{background:#E6F6EE;color:#1F5C46}
+.orpanel .end.time{background:#FFF3D6;color:#7A5200}
 .orpanel .ck{list-style:none;padding:0;margin:6px 0 10px;font-size:13.5px;line-height:1.5}
 .orpanel .ck li{display:flex;gap:8px;padding:5px 0;border-top:1px solid #EEE7DA}
 .orpanel .ck li.miss{color:#9A8F80}
@@ -488,3 +489,10 @@ body.decoing .hint{display:none}
 .netfloat[hidden]{display:none}
 .netfloat button{font:inherit;font-size:13.5px;border:1.5px solid #EADFD0;background:rgba(255,255,255,.95);border-radius:999px;padding:7px 13px;cursor:pointer;color:var(--ink);box-shadow:0 4px 12px rgba(20,40,60,.16)}
 .netfloat button[aria-pressed="true"]{border-color:var(--accent);background:#FDEFF3}
+
+/* 模擬手術室計時 */
+.orpanel .ortimer{position:relative;display:flex;gap:14px;align-items:center;font-size:13px;color:var(--ink-2);background:#F3F7F6;border-radius:10px;padding:4px 10px 7px;margin:2px 0 6px;overflow:hidden}
+.orpanel .ortimer:empty{display:none}
+.orpanel .ortimer b{font-family:var(--f-mono);font-size:15px;color:var(--ink)}
+.orpanel .ortimer .low b{color:#D33A4E}
+.orpanel .ortimer i{position:absolute;left:0;bottom:0;height:3px;background:#2FA88A;transition:width .25s linear}

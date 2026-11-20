@@ -250,7 +250,7 @@ const orHead=(kick)=>`<button class="x" type="button" aria-label="關閉">✕</b
 function orWire(P){ P.querySelector(".x").onclick=orClose; P.querySelector(".mini").onclick=()=>{ const m=P.classList.toggle("min"); P.querySelector(".mini").textContent=m?"▴":"▾"; }; }
 function orMenu(){ if(NET.role==="guest"){ toast("👥 連線中,情境由邀請你的人開始"); return; } const P=$("orPanel"); orOpen(); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false);
   P.innerHTML=orHead("🏥 模擬開刀房 · OSCE 情境")+`<div class="cols"><div><h3>選一個情境</h3>
-    <p class="pt">每個狀況有四個處置可選,每個處置會把病人帶到不同的狀況;選錯還有一次補救機會,再錯病人就會死亡。生命徵象看麻醉機上的監視器。</p></div><div>`+
+    <p class="pt">每個狀況有四個處置可選,每個處置會把病人帶到不同的狀況;選錯還有一次補救機會,再錯病人就會死亡。每個情境限時 3 分鐘,每個狀況要在 30 秒內處置;連線時隊友從背包拿對東西,可以多 10 秒。生命徵象看麻醉機上的監視器。</p></div><div>`+
     OR_SCENARIOS.map((c,i)=>orSeen(c)?`<button type="button" class="scn" data-s="${i}"><b>${orWon(c)?"✅ ":"📝 "}${c.title}${c.tag?`<span class="tag">${c.tag}</span>`:""}</b><small>${c.patient}</small></button>`
       :`<button type="button" class="scn" data-s="${i}"><b>❔ 尚未練習的情境 ${i+1}</b><small>練習過之後才會顯示題目</small></button>`).join("")+`<p class="pt">已練習 ${OR_SCENARIOS.filter(orSeen).length} / ${OR_SCENARIOS.length} 題</p></div></div>`;
   orWire(P); P.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>orStart(+b.dataset.s)); netSendOR("menu"); }
@@ -260,9 +260,31 @@ function orAuto(){ if(ORS.sc||!$("orPanel").hidden||!OR_SCENARIOS.length) return
   orStart(pool[Math.floor(Math.random()*pool.length)]); }
 const orShuffle=(n)=>{ const a=[...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 function orStart(n){ if(NET.role==="guest") return; orOpen(); const w=window.__world; if(w){ w.orReset&&w.orReset(); if(w.inOR&&!w.inOR()) w.goIsland(3); }
-  ORS.cprOn=false; ORS.idx=n; ORS.sc=OR_SCENARIOS[n]; ORS.nodes={...ORS.sc.nodes,...aclsNodes(ORS.sc)}; ORS.acls=false; ORS.help=false; ORS.node=ORS.sc.start; ORS.n=1; ORS.end=null; ORS.miss=0; ORS.ck=new Set(); ORS.last=null; ORS.log=[]; ORS.logK=[]; ORS.isbar=null; ORS.isbarK=null; ORS.assist=[]; ORS.gift={}; ORS.bonus=[]; ORS.bdv={}; ORS.bagOpen=false;
+  ORS.cprOn=false; ORS.idx=n; ORS.sc=OR_SCENARIOS[n]; ORS.nodes={...ORS.sc.nodes,...aclsNodes(ORS.sc)}; ORS.acls=false; ORS.help=false; ORS.node=ORS.sc.start; ORS.n=1; ORS.end=null; ORS.miss=0; ORS.ck=new Set(); ORS.last=null; ORS.log=[]; ORS.logK=[]; ORS.isbar=null; ORS.isbarK=null; ORS.assist=[]; ORS.gift={}; ORS.bonus=[]; ORS.bdv={}; ORS.bagOpen=false; ORS.helpT=new Set();
+  ORS.tEnd=performance.now()+OR_TOTAL; ORS.tRun=true;
   Object.assign(ORS.V,ORV0); Object.assign(ORS.T,ORV0); orStep(); }
-function orStep(){ const nd=ORS.nodes[ORS.node]; { const w=window.__world, inArrest=/^(cpr|v\d|p\d)$/.test(String(ORS.node)); if(w&&w.orCPR&&inArrest!==!!ORS.cprOn){ ORS.cprOn=inArrest; w.orCPR(inArrest); } } ORS.order=orShuffle(nd.options.length); orSetTarget(orBonusV({...ORV0,...nd.v}),!ORS.last); orRender(); }
+function orStep(){ const nd=ORS.nodes[ORS.node]; { const w=window.__world, inArrest=/^(cpr|v\d|p\d)$/.test(String(ORS.node)); if(w&&w.orCPR&&inArrest!==!!ORS.cprOn){ ORS.cprOn=inArrest; w.orCPR(inArrest); } } ORS.order=orShuffle(nd.options.length); ORS.qEnd=performance.now()+OR_Q; orSetTarget(orBonusV({...ORV0,...nd.v}),!ORS.last); orRender(); }
+/* ---------- 計時:每個情境限時 3 分鐘、每個狀況 30 秒(OSCE 的時間壓力) ----------
+   狀況 30 秒內沒處置:算一次失誤、病人惡化一點,再給 30 秒;整題 3 分鐘到:這一站結束(時間到,不算病人死亡)。
+   推去恢復室和 ISBAR 交班不計時。朋友從背包拿出這題用得到的東西,整題和這一題各加 10 秒(同一樣東西只加一次)。 */
+const OR_TOTAL=180000, OR_Q=30000, OR_PLUS=10000;
+const orMMSS=(ms)=>{ const t=Math.max(0,Math.ceil(ms/1000)); return Math.floor(t/60)+":"+String(t%60).padStart(2,"0"); };
+function orTimerHTML(){ return `<div class="ortimer" aria-live="off"></div>`; }
+function orTimerPaint(tl,tq){ const el=$("orPanel").querySelector(".ortimer"); if(!el) return; el.innerHTML=`<span class="${tl<30000?"low":""}">⏱️ 整題 <b>${orMMSS(tl)}</b></span><span class="${tq<10000?"low":""}">本題 <b>${orMMSS(tq)}</b></span><i style="width:${Math.max(0,Math.min(100,tq/OR_Q*100))}%"></i>`; }
+function orTimerTick(){ const now=performance.now();
+  if(NET.role==="guest"){ const g=NET.orT; if(g&&g.run) orTimerPaint(g.tEnd-now,g.qEnd-now); return; }
+  if(!ORS.sc||ORS.end||!ORS.tRun) return; const tl=ORS.tEnd-now, tq=ORS.qEnd-now;
+  if(tl<=0){ orTimeUp(); return; } if(tq<=0){ orQTimeout(); return; } orTimerPaint(tl,tq); }
+setInterval(orTimerTick,250);
+function orQTimeout(){ const nd=ORS.nodes[ORS.node]; ORS.miss++; wrongAns(); ORS.logK.push([ORS.node,"t"]);
+  (ORS.log=ORS.log||[]).push({n:ORS.n,q:nd.q,t:"30 秒內沒有做出處置",cls:"no",icon:"⏱️ ",fb:"等待的時候病人繼續惡化。OSCE 每個狀況都要在時限內判斷並處置;不確定時先呼救、維持氧合與循環。"});
+  if(!/^(cpr|v\d|p\d)$/.test(String(ORS.node))){ const T=ORS.T; orSetTarget({hr:Math.min(160,T.hr+8),sbp:Math.max(55,T.sbp-8),dbp:Math.max(30,T.dbp-5),spo2:Math.max(70,T.spo2-2),alarm:true}); }
+  ORS.qEnd=performance.now()+OR_Q; toast("⏱️ 30 秒到了,還沒處置⋯⋯病人狀況變差了!"); netSendOR("q"); }
+function orTimeUp(){ ORS.tRun=false; orEnd("time","⏱️ 3 分鐘到了,這一站時間結束。"); }
+// 朋友從背包拿出這題用得到的東西(bonus 或這個狀況能用的):加 10 秒
+function orHelpTime(n){ if(!ORS.sc||ORS.end||!ORS.tRun||!COL_BY[n]) return; const nd=ORS.nodes[ORS.node];
+  const useful=!!orBonusFor(ORS.sc,n,ORS.node)||(nd&&(nd.use||[]).some(u=>u.n===n)); if(!useful||ORS.helpT.has(n)) return;
+  ORS.helpT.add(n); ORS.tEnd+=OR_PLUS; ORS.qEnd+=OR_PLUS; toast(`⏱️ 隊友拿對東西(${colIcon(n)} ${esc(n)}),多 10 秒!`,"unlock"); netSendOR("q"); }
 // 有人喊「呼救」:廣播「麻醉科 1 房需要幫忙」,麻醉主治醫師與三位麻醉專科護理師衝進來
 function orCallHelp(){ if(ORS.help) return; ORS.help=true; const w=window.__world; w&&w.orHelp&&w.orHelp(); orHelpBanner(); }
 function orHelpBanner(){
@@ -304,12 +326,12 @@ function ecgSVG(e,hr0){ const T=e.t, HR=Math.max(20,Math.min(220,e.hr||hr0||75))
   const cal=`<path d="M2 ${Y0} H6 V${Y0-MV} H14 V${Y0} H18" class="cal"/>`;
   return `<div class="ecg"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="心電圖 ${e.lead||"II"} 導程">${grid}${cal}<path d="${path}" class="tr"/></svg><small>導程 ${e.lead||"II"} · 25 mm/s · 10 mm/mV</small></div>`; }
 function orRender(){ const c=ORS.sc, nd=ORS.nodes[ORS.node], P=$("orPanel"), L=ORS.last;
-  P.innerHTML=orHead(`${ORS.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${ORS.n} · ${c.title}`)+`<div class="cols"><div>
+  P.innerHTML=orHead(`${ORS.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${ORS.n} · ${c.title}`)+orTimerHTML()+`<div class="cols"><div>
       <p class="pt">👤 ${c.patient}</p>
       <p class="story">${nd.story}</p>${orEcg(nd)?ecgSVG(orEcg(nd),nd.v&&nd.v.hr):""}<div class="vit">${orVitHTML()}</div>${orAssistHTML()}
     </div><div><div class="q">${nd.q}</div>`+
     ORS.order.map((k,j)=>`<button type="button" class="opt" data-k="${k}"><b>${"ABCD"[j]}</b><span>${nd.options[k].t}</span></button>`).join("")+orBagHTML(ORS.bagOpen)+`</div></div>`;
-  P.scrollTop=0; orWire(P); netSendOR("q");
+  P.scrollTop=0; orWire(P); orTimerTick(); netSendOR("q");
   const pick=(o,k,b)=>{ (o.ck||[]).forEach(i=>ORS.ck.add(i)); ORS.logK.push([ORS.node,k]); netSend({t:"pick",j:b.querySelector("b").textContent});
     if(o.ok){ if(!/^(cpr|v\d|p\d|rosc)$/.test(String(ORS.node))) award("scn:"+c.id+":"+ORS.node); } else if(!o.rescue){ ORS.miss++; wrongAns(); }
     if(HELP_RE.test(o.t)) orCallHelp();
@@ -317,6 +339,7 @@ function orRender(){ const c=ORS.sc, nd=ORS.nodes[ORS.node], P=$("orPanel"), L=O
     ORS.last={cls:o.ok||o.rescue?"ok":"no", icon:o.ok?"✅ ":o.rescue?"🩹 救回來了。":o.to==="dead"?"💔 ":o.to==="cpr"?"🚨 ":"⚠️ ", fb:o.fb||""};
     (ORS.log=ORS.log||[]).push({n:ORS.n, q:nd.q, t:o.t, ...ORS.last});   // 過程中不顯示對錯,結束後一起檢討
     // 一選完,病人立刻有反應,直接進到下一個狀況
+    if(o.to==="dead"||o.to==="win") ORS.tRun=false;
     if(o.to==="dead"){ orSetTarget(ORVF); setTimeout(()=>orEnd(false,o.fb),900); P.querySelectorAll(".opt").forEach(x=>x.disabled=true); b.classList.add("no"); return; }
     if(o.to==="win"){ orIsbar(); return; }
     if(o.to==="cpr"&&!ORS.acls){ ORS.acls=true; toast("🚨 病人心跳停止,開始 ACLS"); }
@@ -355,7 +378,7 @@ function orBonusV(v,already){ const d=ORS.bdv; if(!d||/^(cpr|v\d|p\d)$/.test(Str
   const R={hr:[40,150],sbp:[50,170],dbp:[30,100],spo2:[50,100],etco2:[0,60],rr:[0,30],temp:[34,40]};
   Object.keys(R).forEach(k=>{ if(typeof o[k]!=="number") return; let x=o[k]+(already?0:(d[k]||0)); if(k==="etco2"&&v[k]===0) x=0; o[k]=Math.max(R[k][0],Math.min(R[k][1],Math.round(x*10)/10)); }); return o; }
 /* ---------- 病人穩定後:和巡迴護理師一起推去恢復室,用 ISBAR 交班 ---------- */
-function orIsbar(){ const c=ORS.sc, P=$("orPanel"), L=ORS.last;
+function orIsbar(){ const c=ORS.sc, P=$("orPanel"), L=ORS.last; ORS.tRun=false;
   orSetTarget({hr:82,sbp:118,dbp:70,spo2:99,etco2:36,rr:12,temp:37,skin:"normal",alarm:false,shake:false,rhythm:"sinus"});
   P.innerHTML=orHead(`🏥 OSCE 情境 · 送恢復室 · ${c.title}`)+`<div class="cols"><div><p class="pt">👤 ${c.patient}</p></div>
     <div><p class="story">病人穩定了。手術結束後,你和巡迴護理師一起把病人推到恢復室,準備交班給恢復室護理師⋯⋯</p></div></div>`; orWire(P); netSendOR("go");
@@ -373,13 +396,14 @@ function orIsbarAsk(){ const c=ORS.sc, P=$("orPanel"); const opts=orIsbarOpts(c)
     <div><div class="q">哪一個交班最完整、最正確?</div>`+ord.map((k,j)=>`<button type="button" class="opt" data-k="${k}"><b>${"ABCD"[j]}</b><span>${opts[k].t}</span></button>`).join("")+`</div></div>`;
   P.scrollTop=0; orWire(P); netSendOR("ib");
   P.querySelectorAll(".opt[data-k]").forEach(b=>b.onclick=()=>{ const o=opts[+b.dataset.k]; ORS.isbar=o; ORS.isbarK=+b.dataset.k; netSend({t:"pick",j:b.querySelector("b").textContent}); if(o.ok) award("scn:"+c.id+":isbar"); else wrongAns(); orEnd(true); }); }
-function orEnd(win,why){ const c=ORS.sc, P=$("orPanel"); ORS.end=win?"win":"dead"; markSeen(c); if(ORS.cprOn){ ORS.cprOn=false; const w=window.__world; w&&w.orCPR&&w.orCPR(false); }
+function orEnd(win,why){ const c=ORS.sc, P=$("orPanel"); const tu=win==="time"; if(tu) win=false; ORS.tRun=false; ORS.end=win?"win":tu?"time":"dead"; markSeen(c); if(ORS.cprOn){ ORS.cprOn=false; const w=window.__world; w&&w.orCPR&&w.orCPR(false); }
   if(win){ orSetTarget({hr:80,sbp:118,dbp:70,spo2:99,etco2:36,rr:12,temp:37,skin:"normal",alarm:false,shake:false,rhythm:"sinus"}); award("scn:"+c.id+":win"); toast(`🎉 病人穩定了:${c.tag||c.title}`,"unlock"); }
+  else if(tu){ const w=window.__world; w&&w.react("wrong"); }
   else { orSetTarget(ORDEAD,true); const w=window.__world; w&&w.react("wrong"); }
   const got=c.checklist.filter((_,i)=>ORS.ck.has(i)).length, B=ORS.isbar;
   const list=(items,has)=>`<ul class="ck">${items.map((t,i)=>`<li class="${has(i)?"hit":"miss"}"><span>${has(i)?"✅":"⬜"}</span><span>${t}</span></li>`).join("")}</ul>`;
   P.innerHTML=orHead(`🏥 OSCE 情境 · ${c.tag||""} · ${c.title}`)+`<div class="cols"><div>
-      <div class="end ${win?"ok":"dead"}"><b>${win?"🎉 病人穩定了":"💀 病人死亡"}</b><div style="font-size:13px;opacity:.85;margin-bottom:4px">診斷:${c.tag||""}</div>${win?(ORS.acls?"經過急救後恢復自發循環。":"")+c.win:(why||"")+" "+c.dead}</div>
+      <div class="end ${win?"ok":tu?"time":"dead"}"><b>${win?"🎉 病人穩定了":tu?"⏱️ 時間到":"💀 病人死亡"}</b><div style="font-size:13px;opacity:.85;margin-bottom:4px">診斷:${c.tag||""}</div>${win?(ORS.acls?"經過急救後恢復自發循環。":"")+c.win:tu?(why||"")+" 病人還沒穩定下來;看看下面的評分表與檢討,再挑戰一次,試著在 3 分鐘內完成。":(why||"")+" "+c.dead}</div>
       ${B?`<div class="fb ${B.ok?"ok":"no"}">${B.ok?"✅ ISBAR 交班正確。":"⚠️ ISBAR 交班:"}${B.ok?"":B.fb}</div>`:""}
       <div class="nav"><button type="button" id="orAgain">${win?"再做一次":"重新挑戰"}</button>${OR_SCENARIOS.length>1?`<button type="button" class="sec" id="orNextS">下一個情境</button>`:""}<button type="button" class="sec" id="orBack">情境清單</button></div>
     </div><div><div class="q">OSCE 評分表:做到 ${got} / ${c.checklist.length} 項${win&&ORS.miss?`(中途選錯 ${ORS.miss} 次)`:""}</div>${list(c.checklist,i=>ORS.ck.has(i))}
@@ -391,7 +415,7 @@ function orEnd(win,why){ const c=ORS.sc, P=$("orPanel"); ORS.end=win?"win":"dead
 function orBonusEnd(c,usedL){ const B=c.bonus||[]; if(!B.length) return ""; const used=new Set(usedL||ORS.bonus||[]);
   const u=B.filter(b=>used.has(b.n)), left=B.filter(b=>!used.has(b.n));
   return `<div class="q">🎁 收集冊 bonus:用了 ${u.length} / ${B.length} 樣</div><ul class="ck">${u.map(b=>`<li class="hit"><span>${colIcon(b.n)}</span><span><b>${esc(b.n)}</b>:${b.t}。${b.fb}</span></li>`).join("")}${left.map(b=>`<li class="miss"><span>${colIcon(b.n)}</span><span><b>${esc(b.n)}</b>(${usedL?"這次沒用到":orBagHas(b.n)?"收集冊裡有,下次記得拿出來":"還沒收集到"}):${b.t}</span></li>`).join("")}</ul>`; }
-function orClose(){ if(NET.role==="guest"){ $("orPanel").hidden=true; document.body.classList.remove("or-run"); return; } netSendOR("off"); ORS.cprOn=false; $("orPanel").hidden=true; document.body.classList.remove("or-run"); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false); const w=window.__world; w&&w.orReset&&w.orReset(); }
+function orClose(){ if(NET.role==="guest"){ $("orPanel").hidden=true; document.body.classList.remove("or-run"); return; } netSendOR("off"); ORS.cprOn=false; ORS.tRun=false; $("orPanel").hidden=true; document.body.classList.remove("or-run"); ORS.sc=null; ORS.end=null; orSetTarget({...ORV0},false); const w=window.__world; w&&w.orReset&&w.orReset(); }
 $("orLeave").onclick=()=>{ const w=window.__world; w&&w.leaveOR&&w.leaveOR(); };
 $("orStart").onclick=()=>{ if(window.__world && !window.__world.atOR()) window.__world.goIsland(3,true); orMenu(); };
 ORS.raf=requestAnimationFrame(orLoop);
@@ -544,15 +568,16 @@ function netRecv(c,d){ if(!d||typeof d!=="object"||typeof d.t!=="string") return
   } }
 /* ---------- 手術室:邀請者把狀態傳給朋友;朋友看到同一題,但改成協助與背包 ---------- */
 function netSendOR(ph){ if(NET.role!=="host") return; if(ph==="off"||(!ORS.sc&&ph!=="menu")){ netSend({t:"or",ph:"off"}); return; }
-  netSend({t:"or",ph,i:ORS.idx,node:ORS.node,ord:ORS.order,n:ORS.n,acls:!!ORS.acls,ck:[...(ORS.ck||[])],log:ORS.logK||[],end:ORS.end,miss:ORS.miss||0,ib:ORS.ibOrd||null,ibk:ORS.isbarK,bo:(ORS.bonus||[]).slice(0,30),as:(ORS.assist||[]).slice(-12)}); }
+  netSend({t:"or",ph,i:ORS.idx,node:ORS.node,ord:ORS.order,n:ORS.n,acls:!!ORS.acls,ck:[...(ORS.ck||[])],log:ORS.logK||[],end:ORS.end,miss:ORS.miss||0,ib:ORS.ibOrd||null,ibk:ORS.isbarK,bo:(ORS.bonus||[]).slice(0,30),as:(ORS.assist||[]).slice(-12),tr:!!(ORS.tRun&&!ORS.end),tl:Math.round((ORS.tEnd||0)-performance.now()),tq:Math.round((ORS.qEnd||0)-performance.now())}); }
 function orAssistAdd(who,x){ if(!ORS.sc) { toast(`🤝 ${esc(who)}:${esc(x)}`); return; } (ORS.assist=ORS.assist||[]).push({who,x}); toast(`🤝 ${esc(who)}:${esc(x)}`);
-  { const m=/^拿出 (.+)$/.exec(String(x)); if(m&&COL_BY[m[1]]){ const g=ORS.gift=ORS.gift||{}; g[m[1]]=(g[m[1]]||0)+1;
+  { const m=/^拿出 (.+)$/.exec(String(x)); if(m&&COL_BY[m[1]]){ const g=ORS.gift=ORS.gift||{}; g[m[1]]=(g[m[1]]||0)+1; orHelpTime(m[1]);
     const bx=!ORS.end&&$("orPanel").querySelector(".usebox"); if(bx){ ORS.bagOpen=true; orRender(); toast(`🎒 隊友遞來 ${colIcon(m[1])} ${esc(m[1])},已放進收集冊選單`); return; } } }
   const el=$("orPanel").querySelector(".aslog"); if(el) el.outerHTML=orAssistHTML(); netSendOR(ORS.end?"end":ORS.node?"q":"menu"); }
 function orAssistHTML(end){ const a=(NET.role==="guest"?(NET.or&&NET.or.as):ORS.assist)||[]; if(!a.length) return end?"":`<div class="aslog" hidden></div>`;
   return `<div class="aslog"><div class="q">🤝 ${end?"團隊協助紀錄":"隊友協助"}</div><ul>${a.slice(end?0:-5).map(r=>`<li><b>${esc(netStr(r.who,10))}</b>${esc(netStr(r.x,40))}</li>`).join("")}</ul></div>`; }
 const ASSIST=[["🙋","我來幫忙壓胸(換手)",1],["⚡","推去顫器過來、貼好貼片",1],["🫁","幫忙 Ambu 通氣",0],["💉","幫忙抽好急救藥物",0],["🩸","打電話聯絡血庫叫血",0],["🧪","幫忙抽血送 ABG",0],["📝","幫忙記錄時間與用藥",0],["📞","幫忙呼叫支援",0]];
 function orGuest(d){ const P=$("orPanel"), w=window.__world; NET.or=d;
+  { const now=performance.now(), tl=netNum(d.tl), tq=netNum(d.tq); NET.orT={run:!!d.tr&&d.ph==="q",tEnd:now+Math.max(0,Math.min(OR_TOTAL+600000,tl)),qEnd:now+Math.max(0,Math.min(OR_Q+600000,tq))}; }
   if(d.ph==="off"){ ORS.gsc=null; P.hidden=true; document.body.classList.remove("or-run"); return; }
   const c=OR_SCENARIOS[netNum(d.i)|0], host=esc(netName(NET.host&&NET.host.peer)); orOpen();
   if(d.ph==="menu"||!c){ P.innerHTML=orHead(`👥 ${host} 的模擬開刀房`)+`<div class="cols"><div><p class="story">${host} 正在挑選情境⋯⋯</p><p class="pt">情境由邀請你的人開始與作答;你可以在旁邊協助,或從背包拿東西出來用。</p></div><div></div></div>`; orWire(P); return; }
@@ -564,11 +589,11 @@ function orGuest(d){ const P=$("orPanel"), w=window.__world; NET.or=d;
   else if(d.ph==="go"){ left=`<p class="pt">👤 ${c.patient}</p>`; right=`<p class="story">病人穩定了。${host} 和巡迴護理師一起把病人推到恢復室,準備交班⋯⋯</p>`; }
   else if(d.ph==="ib"){ left=`<p class="story">到恢復室了。恢復室護理師說:「好,請交班。」</p><div class="vit">${orVitHTML()}</div>`; right=`<div class="q">哪一個交班最完整、最正確?</div>`+opts(orIsbarOpts(c),d.ib)+lock; }
   else if(d.ph==="end"){ const win=d.end==="win", ck=new Set(d.ck||[]), got=c.checklist.filter((_,i)=>ck.has(i)).length;
-    const steps=(d.log||[]).map(([nid,k])=>{ const o=nodes[nid]&&(k<0?(nodes[nid].use||[])[-1-k]:nodes[nid].options[k]); return o?`<li class="${o.ok||o.rescue?"ok":"no"}"><b>${o.ok?"✅ ":o.rescue?"🩹 ":o.to==="dead"?"💔 ":"⚠️ "}${o.t}</b><span>${o.fb||""}</span></li>`:""; }).join("");
-    left=`<div class="end ${win?"ok":"dead"}"><b>${win?"🎉 病人穩定了":"💀 病人死亡"}</b><div style="font-size:13px;opacity:.85">診斷:${c.tag||""}</div>${win?c.win:c.dead}</div>`;
+    const steps=(d.log||[]).map(([nid,k])=>{ if(k==="t") return `<li class="no"><b>⏱️ 30 秒內沒有做出處置</b><span>等待的時候病人繼續惡化。</span></li>`; const o=nodes[nid]&&(k<0?(nodes[nid].use||[])[-1-k]:nodes[nid].options[k]); return o?`<li class="${o.ok||o.rescue?"ok":"no"}"><b>${o.ok?"✅ ":o.rescue?"🩹 ":o.to==="dead"?"💔 ":"⚠️ "}${o.t}</b><span>${o.fb||""}</span></li>`:""; }).join("");
+    const tu=d.end==="time"; left=`<div class="end ${win?"ok":tu?"time":"dead"}"><b>${win?"🎉 病人穩定了":tu?"⏱️ 時間到":"💀 病人死亡"}</b><div style="font-size:13px;opacity:.85">診斷:${c.tag||""}</div>${win?c.win:tu?"3 分鐘到了,這一站時間結束。":c.dead}</div>`;
     right=`<div class="q">OSCE 評分表:做到 ${got} / ${c.checklist.length} 項</div><ul class="ck">${c.checklist.map((t,i)=>`<li class="${ck.has(i)?"hit":"miss"}"><span>${ck.has(i)?"✅":"⬜"}</span><span>${t}</span></li>`).join("")}</ul>${steps?`<div class="q">逐步檢討</div><ol class="rev">${steps}</ol>`:""}${orBonusEnd(c,(Array.isArray(d.bo)?d.bo:[]).filter(n=>typeof n==="string"))}${orAssistHTML(true)}`; }
-  P.innerHTML=orHead(`👥 ${host} 主持 · ${d.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${netNum(d.n)|0} · ${c.title}`)+`<div class="cols"><div>${left}</div><div>${right}</div></div>`;
-  orWire(P); orWireHelp(P); }
+  P.innerHTML=orHead(`👥 ${host} 主持 · ${d.acls?"🚨 ACLS":"🏥 OSCE 情境"} · 狀況 ${netNum(d.n)|0} · ${c.title}`)+(d.ph==="q"?orTimerHTML():"")+`<div class="cols"><div>${left}</div><div>${right}</div></div>`;
+  orWire(P); orWireHelp(P); orTimerTick(); }
 function orHelpPad(acls){ const bag=Object.keys(BAGD).filter(n=>BAGD[n]>0&&COL_BY[n]&&COL_BY[n].med);
   return `<div class="helppad"><div class="q">🤝 我來幫忙</div><div class="chips">${ASSIST.filter(a=>acls||!a[2]).map(([ic,t])=>`<button type="button" class="chip" data-as="${esc(t)}">${ic} ${t}</button>`).join("")}</div>
     <div class="q">🎒 從背包拿出來用</div><div class="chips">${bag.length?bag.map(n=>`<button type="button" class="chip bag" data-bag="${esc(n)}">${COL_BY[n].ic} ${esc(n)} <small>×${BAGD[n]}</small></button>`).join(""):`<p class="pt">背包裡還沒有藥物、管路或血品;下班去釣魚、浮潛、開漂流瓶可以收集。</p>`}</div></div>`; }
