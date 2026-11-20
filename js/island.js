@@ -456,7 +456,15 @@ function decoBar(k){ let bar=$("decoBar"); if(!bar){ bar=document.createElement(
   $("decoToggle").addEventListener("click",draw); }
 function netDecoSend(){ if(NET.role!=="host") return; const w=window.__world; if(w&&w.decoList) netSend({t:"deco",d:w.decoList()}); }
 
-panels.forEach(([t,p])=>{ const el=$(t); const old=el.onclick; el.onclick=()=>{ panels.forEach(([t2,p2])=>{ if(p2!==p){ $(p2).classList.add("closed"); $(t2).setAttribute("aria-expanded",false); } }); const c=$(p).classList.toggle("closed"); el.setAttribute("aria-expanded",!c); }; });
+panels.forEach(([t,p])=>{ const el=$(t); const old=el.onclick; el.onclick=()=>{ panels.forEach(([t2,p2])=>{ if(p2!==p){ $(p2).classList.add("closed"); $(t2).setAttribute("aria-expanded",false); } }); const c=$(p).classList.toggle("closed"); el.setAttribute("aria-expanded",!c); if(!c) requestAnimationFrame(fitPanels); }; });
+// 選單面板不超出畫面、也不被下方的按鈕列(回到島上/打開書櫃/換科別、提示文字等)遮住:面板高度限制在剩下的空間,內容可以捲動
+function fitPanels(){ const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  panels.forEach(([,p])=>{ const P=$(p); if(!P) return; if(P.classList.contains("closed")){ P.style.maxHeight=""; return; } const r=P.getBoundingClientRect(); let bottom=vh-12;
+    document.querySelectorAll("#dbar,#hint,#useExit,#decoBar,#netFloat,#orLeave,#reset").forEach(el=>{ if(!el||el.hidden) return; const q=el.getBoundingClientRect(); if(!q.width||!q.height||getComputedStyle(el).display==="none") return;
+      if(q.top>r.top+40&&q.left<r.right&&q.right>r.left) bottom=Math.min(bottom,q.top-8); });
+    P.style.maxHeight=Math.max(160,bottom-r.top)+"px"; P.style.overflowY="auto"; }); }
+window.addEventListener("resize",()=>requestAnimationFrame(fitPanels)); if(window.visualViewport) window.visualViewport.addEventListener("resize",()=>requestAnimationFrame(fitPanels));
+setInterval(()=>{ if(panels.some(([,p])=>$(p)&&!$(p).classList.contains("closed"))) fitPanels(); },700);
 $("offbar").addEventListener("click",e=>{ const b=e.target.closest("[data-off]"); if(!b||!window.__world) return; const k=b.dataset.off;
   const sk={swim:"swim",hawaii:"sail",free:"freeswim",snorkel:"freeswim",fish:"fish"}[k]; if(k!=="work"&&!hasSkill(sk)){ lockMsg(sk); return; }
   if(k==="work"){ window.__world.fishEnd(); window.__world.offEnd(); } else if(k==="fish") window.__world.fishStart(); else window.__world.offStart(k);
