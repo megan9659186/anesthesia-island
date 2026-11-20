@@ -1101,7 +1101,8 @@ async function buildWorld(){
         [[0x2FA84F,30,-1],[0xF2C318,80,0],[0x3C78D8,130,1]].forEach(([col,ty,o])=>{ const ox=-.5+38/110, oy=4.3+1.1-(ty+2)/240*2.2, d=o*.14, xi=-.35+o*.2;
           const plug=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.16,10),conM); plug.rotation.x=Math.PI/2; plug.position.copy(PW(ox,oy,.49)); plug.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,1.2)); g.add(plug);
           const inlet=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.18,10),conM); inlet.rotation.x=Math.PI/2; inlet.position.copy(AW(xi,1.2,-1.12)); inlet.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,.45)); g.add(inlet);
-          const pts=[PW(ox,oy,.56),PW(ox,oy-.35,.9),PW(ox*.5,.1,1.05),AW(-2.9+d,.08,1.55),AW(-2.9+d,.08,-1.95+d),AW(xi,.08,-1.95+d),AW(xi,1.2,-1.95+d),AW(xi,1.2,-1.2)];
+          const FY=.175, AY=FY/.9;   // 地板上表面在 y=.12,管子(半徑 .045)要躺在地板上面,不能埋進地板
+          const pts=[PW(ox,oy,.56),PW(ox,oy-.35,.9),PW(ox*.5,FY,1.05),AW(-2.9+d,AY,1.55),AW(-2.9+d,AY,-1.95+d),AW(xi,AY,-1.95+d),AW(xi,1.2,-1.95+d),AW(xi,1.2,-1.2)];
           const curve=new THREE.CatmullRomCurve3(rounded(pts,.35),false,"centripetal");
           g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,160,.045,8,false),M(col,{roughness:.5}))); }); }
       // 麻醉推車(照片):灰褐色抽屜櫃配湖水綠飾條、上層湖水綠托盤、U 型把手架與分格收納盒、側掛黃色針頭收集盒與藍蓋桶、左側收納籃
