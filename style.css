@@ -496,3 +496,9 @@ body.decoing .hint{display:none}
 .orpanel .ortimer b{font-family:var(--f-mono);font-size:15px;color:var(--ink)}
 .orpanel .ortimer .low b{color:#D33A4E}
 .orpanel .ortimer i{position:absolute;left:0;bottom:0;height:3px;background:#2FA88A;transition:width .25s linear}
+
+/* 考古題詳解與書庫連結 */
+.ans .qexp{display:block;margin-top:6px;line-height:1.7}
+.ans .qbooks{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)}
+.ans .qbook{font:inherit;font-size:13px;border:1.5px solid #EADFD0;background:#fff;border-radius:999px;padding:3px 10px;cursor:pointer;color:var(--ink)}
+.ans .qbook:hover{border-color:var(--accent);background:#FDEFF3}

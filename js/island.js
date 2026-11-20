@@ -642,7 +642,10 @@ function openQ(r,list){
   m.querySelector("#reveal").onclick=()=>{ m.dataset.done=1;
     m.querySelectorAll(".opt").forEach(x=>{ const k=+x.dataset.k; if(q.a.includes(k)) x.classList.add("right"); else if(k===pick) x.classList.add("wrong"); });
     const ok=q.a.includes(pick);
-    m.querySelector(".ansbox").innerHTML=`<div class="ans"><b>官方答案 ${q.a.map(k=>LAB[k]).join("、")}</b>${pick<0?"":ok?"　答對了。":"　這題再看一次重點。"}${q.e?`<br>${q.e}`:""}</div>`;
+    // 詳解下方列出書庫裡收錄這題的主題,點一下直接打開那本書複習
+    const tps=T.filter(t=>(t.refs||[]).includes(r)).slice(0,4);
+    m.querySelector(".ansbox").innerHTML=`<div class="ans"><b>官方答案 ${q.a.map(k=>LAB[k]).join("、")}</b>${pick<0?"":ok?"　答對了。":"　這題再看一次重點。"}${q.e?`<br><span class="qexp">📝 詳解:${q.e}</span>`:""}${tps.length?`<div class="qbooks">📖 書庫裡的相關主題:${tps.map(t=>`<button type="button" class="qbook" data-book="${t.id}">${t.name}</button>`).join("")}</div>`:""}</div>`;
+    m.querySelectorAll("[data-book]").forEach(b=>b.onclick=()=>{ const id=b.dataset.book; close(); openBook(id); });
     m.querySelector("#reveal").disabled=true;
     if(ok){ done.add(r); saveDone(); document.querySelectorAll(`.qchip[data-ref="${r}"]`).forEach(c=>c.classList.add("done")); award("q:"+r); } else if(pick>=0) wrongAns(); };
   const idx=list.indexOf(r);
@@ -880,7 +883,7 @@ async function buildWorld(){
     const b=new THREE.Mesh(new THREE.CylinderGeometry(I.R,I.R+2.2,2.6,80),[M(SIDE),M(TOPC),M(SIDE)]); b.position.set(I.c.x,TOP-1.3,I.c.z); b.receiveShadow=true; scene.add(b);
     const gr=new THREE.Mesh(new THREE.CircleGeometry(I.R-.6,80),M(TOPC)); gr.rotation.x=-Math.PI/2; gr.position.set(I.c.x,TOP+.01,I.c.z); gr.receiveShadow=true; scene.add(gr); }
   /* every solid thing on the islands registers a circle here; route() walks around them */
-  const OBS=[]; let FOUNTAIN=null;
+  const OBS=[]; let FOUNTAIN=null; const DECO_OBS=[];   // DECO_OBS:玩家佈置的東西(小麻、海龜、寄居蟹都要繞開)
   const addObs=(o,pad=.45,min=.55)=>{ o.updateMatrixWorld(true); const b=new THREE.Box3().setFromObject(o); if(b.isEmpty()) return; const c=new THREE.Vector3(); o.getWorldPosition(c); c.y=0; const ext=Math.max(Math.abs(b.min.x-c.x),Math.abs(b.max.x-c.x),Math.abs(b.min.z-c.z),Math.abs(b.max.z-c.z)); const r=Math.min(3.2,ext*.8+pad); if(r>=min) OBS.push({c,r,o}); };
   const trees=[];
   /* 矮樹叢:幾團低矮的葉球 + 小紅莓果(共用幾何;很矮,不擋視野) */
@@ -1080,8 +1083,8 @@ async function buildWorld(){
         const face=new THREE.Mesh(new THREE.CircleGeometry(1.15,32),new THREE.MeshBasicMaterial({color:0xFFFBEA})); face.rotation.x=Math.PI/2; face.position.y=-.19; lh.add(face);
         const hdl=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.45,12),M(0x2A3038)); hdl.position.y=-.4; lh.add(hdl);
         const cap=new THREE.Mesh(new THREE.SphereGeometry(.3,14,10,0,Math.PI*2,0,Math.PI/2),lampM); cap.position.y=.17; lh.add(cap); });
-      // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,和麻醉機朝同一個方向;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
-      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=.45; g.add(pg);
+      // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,大致和麻醉機朝同一個方向、再往右斜一點;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
+      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=.7; g.add(pg);
         const pb=new THREE.Mesh(new RoundedBoxGeometry(1.1,2.4,.8,2,.06),white); pb.position.y=4.3; pg.add(pb);
         const pst=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,1.0,12),white); pst.position.y=6.0; pg.add(pst);
         const pt=tex(110,240,(c,w,h)=>{ c.fillStyle="#F3F4F2"; c.fillRect(0,0,w,h); [["#2FA84F",30],["#F2C318",80],["#3C78D8",130]].forEach(([col,y])=>{ c.fillStyle="#C9CDD1"; c.fillRect(14,y-14,82,32); c.fillStyle=col; c.beginPath(); c.arc(38,y+2,10,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(72,y+2,10,0,Math.PI*2); c.fill(); });
@@ -1164,7 +1167,7 @@ async function buildWorld(){
     shadowy(g);
     const toW=(x,z)=>{ const v=new THREE.Vector3(x,0,z).applyAxisAngle(up0,yaw).add(new THREE.Vector3(I.c.x,0,I.c.z)); return v; };
     const loc=(x,z)=>{ const v=new THREE.Vector3(x-I.c.x,0,z-I.c.z).applyAxisAngle(up0,-yaw); return v; };
-    const room={ yaw, station:toW(-1.7,4.4), stationYaw:yaw+Math.PI, doorIn:toW(W/2-1.4,DZC), doorOut:toW(W/2+1.6,DZC), via:toW(5.0,6.2),
+    const room={ yaw, station:toW(-1.7,4.4), station2:toW(1.0,5.0), stationYaw:yaw+Math.PI, doorIn:toW(W/2-1.4,DZC), doorOut:toW(W/2+1.6,DZC), via:toW(5.0,6.2),
       inside:(p)=>{ const l=loc(p.x,p.z); return Math.abs(l.x)<W/2-.2 && Math.abs(l.z)<D/2-.2; }, near:(x,z)=>{ const l=loc(x,z); return (Math.abs(l.x)<W/2+1.5 && Math.abs(l.z)<D/2+1.5) || (l.x>-22 && l.x<-10 && l.z>-7 && l.z<13); } };
     // 兩個點都在手術室外面、但直線會穿過手術室時:沿牆外側繞過轉角(不穿牆)
     // 恢復室(PACU)在手術室左邊,只有前面(+z)開口:PX=-16、寬 9、深 10
@@ -2349,8 +2352,11 @@ async function buildWorld(){
       const st=ENV.state(), night=ENV.night(), stormy=st.wx==="typhoon"||st.wx==="downpour", wave=ENV.wave();
       // crabs
       crabs.forEach(c=>{ const u=c.userData; if(u.held) return; if(u.pause>0){ u.pause-=dt; } else { u.a+=u.sp*dt*(stormy?0:1); if(Math.random()<.003) u.pause=1.5+Math.random()*3; }
-        const x=Math.cos(u.a)*u.r, z=Math.sin(u.a)*u.r; const blocked=Object.values(D3).some(d=>Math.hypot(d.c.x-x,d.c.z-z)<PR+.5);
-        if(blocked){ u.sp=-u.sp; u.a+=u.sp*dt*3; }
+        let x=Math.cos(u.a)*u.r, z=Math.sin(u.a)*u.r;
+        // 寄居蟹不穿過任何東西:街區平台、樹、沙灘擺設、玩家佈置、吊橋、小麻與其他寄居蟹
+        const blocked=Object.values(D3).some(d=>Math.hypot(d.c.x-x,d.c.z-z)<PR+.5)||trees.some(t=>t.visible&&Math.hypot(t.position.x-x,t.position.z-z)<1.5)||OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+.5)
+          ||DECO_OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+.6)||BRIDGES.some(br=>segDist(x,z,br)<2.2)||Math.hypot(nurse.position.x-x,nurse.position.z-z)<1.7||crabs.some(o=>o!==c&&!o.userData.held&&Math.hypot(o.position.x-x,o.position.z-z)<1.6);
+        if(blocked){ u.sp=-u.sp; u.a+=u.sp*dt*3; x=Math.cos(u.a)*u.r; z=Math.sin(u.a)*u.r; u.pause=Math.max(u.pause,.4); }
         c.position.set(x,TOP+(u.pause>0?0:Math.abs(Math.sin(tt*9))*.04),z); { const sg=Math.sign(u.sp); c.rotation.y=Math.atan2(-Math.sin(u.a)*sg,Math.cos(u.a)*sg); }
         u.legs.forEach(l=>{ l.lg.rotation.x=u.pause>0?0:Math.sin(tt*12+l.ph)*.35; }); });
       // gulls: daytime and fair weather only
@@ -2800,9 +2806,10 @@ async function buildWorld(){
   let routeMs=0;
   // detour around every district platform (bookcase included) instead of walking through it
   const AV_R=PR+1.0;
-  const OBST=()=>[...(ISL[3].room&&ISL[3].room.obs?ISL[3].room.obs():[]),...Object.values(D3).map(d=>({c:d.c,r:AV_R})),...trees.filter(t=>t.userData.keep!==undefined?t.userData.keep:t.visible).map(t=>({c:t.position,r:1.15})),...OBS,...SANDBUILT.map(g=>({c:g.position,r:1.35}))];
+  const OBST=()=>[...(ISL[3].room&&ISL[3].room.obs?ISL[3].room.obs().map(o=>({...o,room:true})):[]),...Object.values(D3).map(d=>({c:d.c,r:AV_R})),...trees.filter(t=>t.userData.keep!==undefined?t.userData.keep:t.visible).map(t=>({c:t.position,r:1.15})),...OBS,...DECO_OBS,...SANDBUILT.map(g=>({c:g.position,r:1.35}))];
   function detour(A,B,depth=0){
-    if(depth<10) for(const ob of OBST()){ const c=ob.c, r=ob.r;
+    const RM=ISL[3].room, segIn=!!(RM&&(RM.inside(A)||RM.inside(B)));
+    if(depth<10) for(const ob of OBST()){ const c=ob.c, r=ob.r; if(ob.room&&!segIn) continue;   // 手術室裡的設備與人員只在手術室裡繞,牆外的路不受影響(否則會繞進牆裡)
       const ax=A.x-c.x, az=A.z-c.z, bx=B.x-c.x, bz=B.z-c.z; const aIn=Math.hypot(ax,az)<r-.05, bIn=Math.hypot(bx,bz)<r-.05;
       if(aIn&&bIn) continue;
       const dx=bx-ax, dz=bz-az, qa=dx*dx+dz*dz; if(qa<1e-6) continue;
@@ -2811,7 +2818,11 @@ async function buildWorld(){
       if(t2<=1e-3||t1>=1-1e-3||(Math.min(t2,1)-Math.max(t1,0))*Math.sqrt(qa)<.4) continue;
       const g0=aIn?Math.atan2(az,ax):Math.atan2(az+dz*t1,ax+dx*t1), g1=bIn?Math.atan2(bz,bx):Math.atan2(az+dz*t2,ax+dx*t2);
       let dg=g1-g0; while(dg>Math.PI) dg-=2*Math.PI; while(dg<-Math.PI) dg+=2*Math.PI;
-      const n=Math.max(2,Math.ceil(Math.abs(dg)/.3)), arcp=[]; for(let i=0;i<=n;i++){ const g=g0+dg*i/n; arcp.push(new THREE.Vector3(c.x+Math.cos(g)*r,0,c.z+Math.sin(g)*r)); }
+      const mkArc=(dg)=>{ const n=Math.max(2,Math.ceil(Math.abs(dg)/.3)), out=[]; for(let i=0;i<=n;i++){ const g=g0+dg*i/n; out.push(new THREE.Vector3(c.x+Math.cos(g)*r,0,c.z+Math.sin(g)*r)); } return out; };
+      let arcp=mkArc(dg);
+      // 繞障礙物的弧線如果會穿進手術室或恢復室的牆,就改從另一邊繞
+      if(RM&&!segIn&&arcp.some(q=>RM.inSuiteArea(q))){ const alt=mkArc(dg>0?dg-2*Math.PI:dg+2*Math.PI); if(!alt.some(q=>RM.inSuiteArea(q))) arcp=alt; }
+      const n=arcp.length-1;
       return [...(aIn?[arcp[0]]:detour(A,arcp[0],depth+1)),...arcp.slice(1),...(bIn?[B]:detour(arcp[n],B,depth+1))]; }
     return [B]; }
   function avoidPts(pts){ const out=[]; let prev=nurse.position.clone(); const R=ISL[3].room; for(const p of pts){ out.push(...detour(prev,new THREE.Vector3(p.x,0,p.z)).map(q=>R&&R.clampIn?R.clampIn(q):q)); prev=p; } return out; }
@@ -2999,8 +3010,9 @@ async function buildWorld(){
     for(let i=FALLEN.length-1;i>=0;i--){ const f=FALLEN[i], u=f.userData; if(u.rest){ u.age=(u.age||0)+dt; continue; } u.t+=dt;
       if(u.leaf){ u.v.y=Math.max(u.v.y-2.2*dt,-1.6); f.position.addScaledVector(u.v,dt); f.rotation.y+=dt*2.2; f.rotation.z=Math.sin(u.t*3)*.5; if(f.position.y<=TOP+.08){ f.position.y=TOP+.08; f.rotation.set(0,f.rotation.y,0); u.rest=true; } }
       else { u.v.y-=16*dt; f.position.addScaledVector(u.v,dt); f.rotation.x+=u.v.z*dt; f.rotation.z-=u.v.x*dt; if(f.position.y<=TOP+.3){ f.position.y=TOP+.3; if(Math.abs(u.v.y)>2){ u.v.y=-u.v.y*.35; u.v.x*=.6; u.v.z*=.6; } else { u.rest=true; } } } }
+    if(walk&&BUSY&&BUSY.k==="snack") snackStop();
     if(!BUSY||walk) return; const B=BUSY; B.t+=dt;
-    if(B.k==="snack"){ const bites=3, per=1.1, i=Math.floor(B.t/per), k=(B.t-i*per)/per;
+    if(B.k==="snack"){ if(walk||!snackOK()){ snackStop(); return; } const bites=3, per=1.1, i=Math.floor(B.t/per), k=(B.t-i*per)/per;
       if(i<bites){ const up=Math.sin(Math.min(1,k*1.6)*Math.PI); ud.armR.sh.rotation.set(-.4-up*2.0,0,.15+up*.45); ud.armR.fore.rotation.x=-.4+up*.2; ud.head.rotation.x=up*.08; /* 把食物送到嘴邊 */ if(k>.45&&k<.5) B.food.scale.multiplyScalar(.84); return; }
       if(!B.thrown){ B.thrown=true; ud.armR.hand.remove(B.food); ud.head.rotation.x=0;
         const cup=B.S[0]==="飲料", lit=mkLitter(B.S[3],cup); const hand=ud.armR.hand.getWorldPosition(new THREE.Vector3()); lit.position.copy(hand);
@@ -3054,6 +3066,12 @@ async function buildWorld(){
     ["冰淇淋","🍦",()=>{ const g=new THREE.Group(); const c=new THREE.Mesh(new THREE.ConeGeometry(.12,.3,12),M(0xD9A35A)); c.rotation.x=Math.PI; g.add(c); const s2=new THREE.Mesh(new THREE.SphereGeometry(.14,12,10),M(0xFFC4D6)); s2.position.y=.18; g.add(s2); return g; },0xEDE0C8]];
   function mkLitter(col,cup){ const m=cup?new THREE.Mesh(new THREE.CylinderGeometry(.16,.12,.4,12),M(col)):new THREE.Mesh(new THREE.IcosahedronGeometry(.22,0),M(col,{flatShading:true,roughness:.8})); if(cup){ m.rotation.z=Math.PI/2; } shadowy(m); return m; }
   let idleT=0, snackCD=6;
+  // 吃零食、丟垃圾只在小麻沒事做的時候:在書庫(街區書櫃、看書、題目視窗)或模擬手術室(含恢復室、手術室附近)都不行
+  function snackOK(){ if(focus||bookEl||inHut||OFF||FISH||LOUNGE||holdIV||onStool||SAND||danceT>0) return false; if(inSuite()||(ISL[3].room&&ISL[3].room.near(nurse.position.x,nurse.position.z))) return false;
+    if(Object.values(D3).some(d=>Math.hypot(d.c.x-nurse.position.x,d.c.z-nurse.position.z)<PR+2.5)) return false;
+    const op=document.getElementById("orPanel"), wp=document.getElementById("wishPanel"); if((op&&!op.hidden)||(wp&&!wp.hidden)) return false;
+    if(document.querySelector(".modal,.about,.intro,.shelfmenu")||(typeof DECO!=="undefined"&&DECO.mode)) return false; return true; }
+  function snackStop(){ if(!(BUSY&&BUSY.k==="snack")) return; const ud=nurse.userData; if(BUSY.food&&BUSY.food.parent) BUSY.food.parent.remove(BUSY.food); ud.head.rotation.x=0; BUSY=null; if(mode==="busy") mode="idle"; idleT=0; }
   function idleTick(dt,tt){ const ud=nurse.userData;
     const free=mode==="idle"&&!walk&&!focus&&!inHut&&!OFF&&!holdIV&&!onStool&&!SAND&&!LOUNGE&&!FISH&&!BUSY&&danceT<=0&&!(ISL[3].room&&ISL[3].room.near(nurse.position.x,nurse.position.z));
     const selfManaged=holdIV||onStool||SAND||OFF||LOUNGE||FISH||BOAT||CARRY;   // 這些活動自己會管工具
@@ -3065,7 +3083,7 @@ async function buildWorld(){
     if(idleT>3&&ud.ETT.visible){ setTools(false); }
     if(!ud.ETT.visible){ ud.armR.sh.rotation.x+=(-.12-ud.armR.sh.rotation.x)*Math.min(1,dt*4); ud.armR.fore.rotation.x+=(-.2-ud.armR.fore.rotation.x)*Math.min(1,dt*4); ud.armL.sh.rotation.x+=(-.12-ud.armL.sh.rotation.x)*Math.min(1,dt*4); ud.armL.fore.rotation.x+=(-.2-ud.armL.fore.rotation.x)*Math.min(1,dt*4); }
     // 再閒一陣子:拿出零食來吃
-    if(idleT>3+snackCD&&!inSuite()){ idleT=3; snackCD=10+Math.random()*12; const S=SNACKS[Math.floor(Math.random()*SNACKS.length)]; const food=S[2](); food.scale.setScalar(1.6); setTools(false); ud.armR.hand.add(food); food.position.set(0,-.18,.12);
+    if(idleT>3+snackCD&&snackOK()){ idleT=3; snackCD=10+Math.random()*12; const S=SNACKS[Math.floor(Math.random()*SNACKS.length)]; const food=S[2](); food.scale.setScalar(1.6); setTools(false); ud.armR.hand.add(food); food.position.set(0,-.18,.12);
       faceCamera=true; mode="busy"; BUSY={k:"snack",t:0,S,food}; toast(`${S[1]}小麻拿出${S[0]}開始吃⋯⋯`); } }
   /* ---------- 水潭小船:坐上去慢慢漂,在船上釣魚 ---------- */
   let BOAT=null, CARRY=null;
@@ -3092,7 +3110,7 @@ async function buildWorld(){
     // 走得到的地方:不靠近街區平台、樹、障礙物、手術室與中央工作站
     const ptOK=(I,x,z)=>{ const r=Math.hypot(x-I.c.x,z-I.c.z); if(r>I.R-1.4||r<(I.ring?I.ring+1:PR+2)) return false;
       if(!Object.values(D3).every(d=>Math.hypot(d.c.x-x,d.c.z-z)>PR+1.2)) return false; if(I.room&&I.room.near(x,z)) return false; if(Math.hypot(x-HUT.pos.x,z-HUT.pos.z)<6.5) return false;
-      if(trees.some(t=>t.visible&&Math.hypot(t.position.x-x,t.position.z-z)<1.6)) return false; if(OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+1.0)) return false; return BRIDGES.every(br=>segDist(x,z,br)>2.5); };
+      if(trees.some(t=>t.visible&&Math.hypot(t.position.x-x,t.position.z-z)<1.6)) return false; if(OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+1.0)) return false; if(DECO_OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+1.0)) return false; return BRIDGES.every(br=>segDist(x,z,br)>2.5); };
     const clear=(I,a,b,sea)=>{ const d=Math.hypot(b.x-a.x,b.z-a.z), n2=Math.max(1,Math.ceil(d/.7)); for(let k=1;k<=n2;k++){ const x=a.x+(b.x-a.x)*k/n2, z=a.z+(b.z-a.z)*k/n2; const r=Math.hypot(x-I.c.x,z-I.c.z); if(sea&&r>I.R-1.6){ if(!seaOK(I,x,z)) return false; continue; } if(!ptOK(I,x,z)) return false; } return true; };
     // 海裡:不能碰到吊橋(含橋墩)或別的島
     const seaOK=(I,x,z)=>BRIDGES.every(br=>segDist(x,z,br)>4.5)&&ISL.every(J=>J===I||Math.hypot(x-J.c.x,z-J.c.z)>J.R+1.5);
@@ -3452,7 +3470,7 @@ async function buildWorld(){
     if(I.room){ const asp=(stage.clientWidth||1)/(stage.clientHeight||1); const u=new THREE.Vector3(Math.sin(I.room.yaw),0,Math.cos(I.room.yaw)); const run=document.body.classList.contains("or-run"); const hgt=asp<1?(run?62:44):(run?34:25); return {pos:I.c.clone().addScaledVector(u,asp<1?(run?10:7):(run?12:9)).add(new THREE.Vector3(0,hgt,0)), tgt:I.c.clone().addScaledVector(u,asp<1?1.5:.8).add(new THREE.Vector3(0,1.5,0))}; } const w=stage.clientWidth||1,h=stage.clientHeight||1, asp=w/h; const fov=(asp<1?58:46)*Math.PI/180;
     const hf=2*Math.atan(Math.tan(fov/2)*asp); const dist=asp<1?Math.max(50*q,(I.R+1)/Math.tan(hf/2)):Math.max(66*q, (I.R+8)/Math.tan(hf/2)); const pitch=(asp<1?52:34)*Math.PI/180;
     return {pos:new THREE.Vector3(0,Math.sin(pitch),Math.cos(pitch)).multiplyScalar(dist).add(new THREE.Vector3(0,0,4*q)).add(I.c), tgt:new THREE.Vector3(0,asp<1?-1:1,(asp<1?4:3)*q).add(I.c)}; }
-  function islandFront(I){ if(I.room) return I.room.station.clone(); if(I.i===0) return HUT.front.clone(); if(I.ring) return I.c.clone().add(new THREE.Vector3(0,0,I.ring+3.6)); const d=D3[I.sids[0]]; return I.c.clone().addScaledVector(d?d.u:new THREE.Vector3(0,0,1),-(PR+2.2)); }
+  function islandFront(I){ if(I.room) return (NET.role==="guest"?I.room.station2:I.room.station).clone(); if(I.i===0) return HUT.front.clone(); if(I.ring) return I.c.clone().add(new THREE.Vector3(0,0,I.ring+3.6)); const d=D3[I.sids[0]]; return I.c.clone().addScaledVector(d?d.u:new THREE.Vector3(0,0,1),-(PR+2.2)); }
   let chase=null;
   function jumpOffDuty(){ if(!OFF) return; const v=OFF.v; if(v) v.visible=false; if(OFF.x&&OFF.x.v2) OFF.x.v2.visible=false; ENV.taken=null; const ud=nurse.userData; ud.setOutfit("scrub"); nurse.quaternion.identity(); ud.body.position.y=0; ud.body.rotation.set(0,0,0); ud.head.rotation.set(0,0,0);
     ud.legs.forEach(l=>l.rotation.set(0,0,0)); ud.armR.sh.rotation.set(-.95,0,.12); ud.armR.fore.rotation.x=-.75; ud.armL.sh.rotation.set(-.85,0,-.12); ud.armL.fore.rotation.x=-.85; OFF=null; setHud(); }
@@ -3460,6 +3478,10 @@ async function buildWorld(){
   function goIsland(i,instant){ if(i!==3&&orLocked()){ lockMsg(); return; } fishEnd(); if(OFF){ if(instant){ jumpOffDuty(); } else { offEnd(()=>goIsland(i)); return; } } if(bookEl) closeBook();
     if(focus){ focus=null; target=null; try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
     viewIsl=i; setHud(); const I=ISL[i];
+    if(instant&&I.room){ snackStop(); const R=I.room, hv=homeView(); tweenCam(hv.pos,hv.tgt,900);
+      if(!inSuite()){ // 瞬間移動到手術室門外,再從門口走進去(不穿牆)
+        const out=R.doorOut.clone().sub(R.doorIn).setY(0).normalize(), p=R.doorOut.clone().addScaledVector(out,2.5); walk=null; inHut=false; chase=null; poof(nurse.position); nurse.position.set(p.x,groundY(p.x,p.z),p.z); poof(nurse.position); }
+      faceCamera=false; route(pathTo(islandFront(I)),()=>{ mode="idle"; nurse.quaternion.setFromAxisAngle(up0,R.stationYaw); }); return; }
     if(instant){ const p=islandFront(I); walk=null; inHut=false; chase=null; poof(nurse.position); nurse.position.set(p.x,groundY(p.x,p.z),p.z); mode="idle"; faceCamera=true; poof(nurse.position); if(I.room){ faceCamera=false; nurse.quaternion.setFromAxisAngle(up0,I.room.stationYaw); }
       const hv=homeView(); tweenCam(hv.pos,hv.tgt,900); if(i===0 && ENV.raining()) goHut(); return; }
     const dest=(i===0 && ENV.raining())?HUT.door:islandFront(I); const hv=homeView(); camTo(hv,dest,1500);
@@ -3602,10 +3624,12 @@ async function buildWorld(){
       const pl=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.4,8),M(0xD7DEE6)); pl.position.y=.7; g.add(pl); return g; }};
   const DECO_R={pot:.8,tree:1.6,lamp:.6,bench:1.6,umb:.8,flag:.5,rock:1.1,balloon:.6,mush:.9,xmas:1.5,cactus:.7,sign:1.3,snowman:.8,heart:1.1};
   function decoOK(x,z){ const p=new THREE.Vector3(x,0,z), I=islandAt(p), r=Math.hypot(x-I.c.x,z-I.c.z); if(r>I.R-1.2) return false; if(I.ring&&r<I.ring+.6) return false; if(suiteP(p)||(I.room&&I.room.inside(p))) return false;
-    for(const d of Object.values(D3)) if(Math.hypot(d.c.x-x,d.c.z-z)<PR+.5) return false; if(Math.hypot(HUT.pos.x-x,HUT.pos.z-z)<7) return false; if(ISL[3].room&&ISL[3].room.near&&ISL[3].room.near(x,z)) return false; return true; }
+    for(const d of Object.values(D3)) if(Math.hypot(d.c.x-x,d.c.z-z)<PR+.5) return false; if(Math.hypot(HUT.pos.x-x,HUT.pos.z-z)<7) return false; if(ISL[3].room&&ISL[3].room.near&&ISL[3].room.near(x,z)) return false;
+    if(OBS.some(o=>Math.hypot(o.c.x-x,o.c.z-z)<o.r+.6)||trees.some(t=>t.visible&&Math.hypot(t.position.x-x,t.position.z-z)<1.8)) return false; return BRIDGES.every(br=>segDist(x,z,br)>3); }
   function decoMake(k,x,z,r){ const f=decoBuild[k]; if(!f) return null; const g=f(); g.position.set(x,groundY(x,z),z); g.rotation.y=r; g.userData.deco=k; shadowy(g); scene.add(g); return g; }
-  function decoRender(list){ DECO.list.forEach(d=>scene.remove(d.g)); DECO.list=[]; (list||[]).forEach(([k,x,z,r])=>{ const g=decoMake(k,x,z,r); if(g) DECO.list.push({k,x,z,r,g}); }); }
-  function decoSave(){ try{ localStorage.setItem("island-deco",JSON.stringify(DECO.list.map(d=>[d.k,+d.x.toFixed(2),+d.z.toFixed(2),+d.r.toFixed(3)]))); }catch(e){} if(typeof netDecoSend==="function") netDecoSend(); }
+  function decoRender(list){ DECO.list.forEach(d=>scene.remove(d.g)); DECO.list=[]; (list||[]).forEach(([k,x,z,r])=>{ const g=decoMake(k,x,z,r); if(g) DECO.list.push({k,x,z,r,g}); }); decoObsSync(); }
+  function decoObsSync(){ DECO_OBS.length=0; DECO.list.forEach(d=>DECO_OBS.push({c:d.g.position,r:DECO_R[d.k]||1})); }
+  function decoSave(){ decoObsSync(); try{ localStorage.setItem("island-deco",JSON.stringify(DECO.list.map(d=>[d.k,+d.x.toFixed(2),+d.z.toFixed(2),+d.r.toFixed(3)]))); }catch(e){} if(typeof netDecoSend==="function") netDecoSend(); }
   function decoMine(){ try{ return decoClean(JSON.parse(localStorage.getItem("island-deco")||"[]")); }catch(e){ return []; } }
   function decoClean(a){ return (Array.isArray(a)?a:[]).filter(d=>Array.isArray(d)&&decoBuild[d[0]]&&[d[1],d[2],d[3]].every(v=>Number.isFinite(+v))&&decoOK(+d[1],+d[2])).slice(0,DECO_MAX).map(d=>[d[0],+d[1],+d[2],+d[3]]); }
   function decoHit(e){ const r=renderer.domElement.getBoundingClientRect(); ptr.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ptr,camera);
@@ -3615,6 +3639,7 @@ async function buildWorld(){
     if(hit){ hit.r+=Math.PI/4; hit.g.rotation.y=hit.r; decoSave(); return; }
     if(!ray.ray.intersectPlane(groundPlane,gHit)) return; const x=gHit.x, z=gHit.z;
     if(!decoOK(x,z)){ toast("🚧 這裡不能放:要放在島上的空地(不能放在書櫃、小木屋、麻醉機旁或手術室裡)"); return; }
+    if(Math.hypot(nurse.position.x-x,nurse.position.z-z)<2.2){ toast("小麻站在這裡,換個地方放吧"); return; }
     if(DECO.list.length>=DECO_MAX){ toast(`島上最多放 ${DECO_MAX} 樣東西,先收起一些吧`); return; }
     for(const d of DECO.list) if(Math.hypot(d.x-x,d.z-z)<(DECO_R[d.k]+DECO_R[DECO.mode])*.7){ toast("太擠了,換個地方放吧"); return; }
     const r=Math.atan2(camera.position.x-x,camera.position.z-z); const g=decoMake(DECO.mode,x,z,r); if(!g) return; DECO.list.push({k:DECO.mode,x,z,r,g}); poof(g.position.clone()); decoSave(); }
