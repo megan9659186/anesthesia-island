@@ -1083,16 +1083,27 @@ async function buildWorld(){
         const face=new THREE.Mesh(new THREE.CircleGeometry(1.15,32),new THREE.MeshBasicMaterial({color:0xFFFBEA})); face.rotation.x=Math.PI/2; face.position.y=-.19; lh.add(face);
         const hdl=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.45,12),M(0x2A3038)); hdl.position.y=-.4; lh.add(hdl);
         const cap=new THREE.Mesh(new THREE.SphereGeometry(.3,14,10,0,Math.PI*2,0,Math.PI/2),lampM); cap.position.y=.17; lh.add(cap); });
-      // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,大致和麻醉機朝同一個方向、再往右斜一點;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
-      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=.7; g.add(pg);
+      // 氣體吊塔(氣柱):在麻醉機和藥車中間、偏藥車那側,正面比麻醉機的方向再往麻醉機斜一些;氧氣(綠)、空氣(黃)、笑氣(藍)出口與插座,管線接到麻醉機
+      { const pg=new THREE.Group(); pg.position.set(-7.55,0,5.8); pg.rotation.y=.95; g.add(pg);
         const pb=new THREE.Mesh(new RoundedBoxGeometry(1.1,2.4,.8,2,.06),white); pb.position.y=4.3; pg.add(pb);
         const pst=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,1.0,12),white); pst.position.y=6.0; pg.add(pst);
         const pt=tex(110,240,(c,w,h)=>{ c.fillStyle="#F3F4F2"; c.fillRect(0,0,w,h); [["#2FA84F",30],["#F2C318",80],["#3C78D8",130]].forEach(([col,y])=>{ c.fillStyle="#C9CDD1"; c.fillRect(14,y-14,82,32); c.fillStyle=col; c.beginPath(); c.arc(38,y+2,10,0,Math.PI*2); c.fill(); c.beginPath(); c.arc(72,y+2,10,0,Math.PI*2); c.fill(); });
           c.fillStyle="#E25B4B"; c.fillRect(18,176,30,40); c.fillRect(62,176,30,40); c.fillStyle="#fff"; c.fillRect(26,186,4,14); c.fillRect(36,186,4,14); c.fillRect(70,186,4,14); c.fillRect(80,186,4,14); });
         const pf=new THREE.Mesh(new THREE.PlaneGeometry(1.0,2.2),new THREE.MeshBasicMaterial({map:pt})); pf.position.set(0,4.3,.41); pg.add(pf);
-        pg.updateMatrixWorld(true); const am=new THREE.Vector3(-1.2,.85,.4).multiplyScalar(.9).applyAxisAngle(up0,.45).add(new THREE.Vector3(-5.4,0,3.0));
-        [[0x2FA84F,-.2],[0xF2C318,0],[0x3C78D8,.2]].forEach(([col,o])=>{ const s0=new THREE.Vector3(o,3.6,.42).applyMatrix4(pg.matrix), s1=new THREE.Vector3(am.x+o*.3,2.4,am.z+.1);
-          const h=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([s0,s0.clone().add(new THREE.Vector3(0,-1.3,0)),new THREE.Vector3((s0.x+s1.x)/2,1.0,(s0.z+s1.z)/2),s1]),24,.04,6,false),M(col,{roughness:.5})); g.add(h); }); }
+        // 每條管子接在同顏色的出口(綠=氧氣、黃=空氣、藍=笑氣),往下垂到地面,從呼吸袋與機身之間繞到麻醉機背面接進去,不穿過麻醉機
+        pg.updateMatrixWorld(true);
+        const PW=(x,y,z)=>new THREE.Vector3(x,y,z).applyMatrix4(pg.matrix);                                   // 氣柱本地座標 → 手術室座標
+        const AW=(x,y,z)=>new THREE.Vector3(x,y,z).multiplyScalar(.9).applyAxisAngle(up0,.45).add(new THREE.Vector3(-5.4,0,3.0));   // 麻醉機本地座標 → 手術室座標
+        const rounded=(pts,r)=>{ const out=[pts[0]]; for(let k=1;k<pts.length-1;k++){ const a=pts[k-1], b=pts[k], c=pts[k+1]; const l1=a.distanceTo(b), l2=b.distanceTo(c), rr=Math.min(r,l1*.45,l2*.45);
+            const p0=b.clone().lerp(a,rr/l1), p2=b.clone().lerp(c,rr/l2); for(let t=0;t<=6;t++){ const u=t/6, v=1-u; out.push(new THREE.Vector3().addScaledVector(p0,v*v).addScaledVector(b,2*u*v).addScaledVector(p2,u*u)); } }
+          out.push(pts[pts.length-1]); return out; };
+        const conM=M(0xE8EBEE,{roughness:.4,metalness:.3});
+        [[0x2FA84F,30,-1],[0xF2C318,80,0],[0x3C78D8,130,1]].forEach(([col,ty,o])=>{ const ox=-.5+38/110, oy=4.3+1.1-(ty+2)/240*2.2, d=o*.14, xi=-.35+o*.2;
+          const plug=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.16,10),conM); plug.rotation.x=Math.PI/2; plug.position.copy(PW(ox,oy,.49)); plug.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,.95)); g.add(plug);
+          const inlet=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.18,10),conM); inlet.rotation.x=Math.PI/2; inlet.position.copy(AW(xi,1.2,-1.12)); inlet.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(up0,.45)); g.add(inlet);
+          const pts=[PW(ox,oy,.56),PW(ox,oy-.35,.9),PW(ox*.5,.1,1.05),AW(-2.9+d,.08,1.55),AW(-2.9+d,.08,-1.95+d),AW(xi,.08,-1.95+d),AW(xi,1.2,-1.95+d),AW(xi,1.2,-1.2)];
+          const curve=new THREE.CatmullRomCurve3(rounded(pts,.35),false,"centripetal");
+          g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,160,.045,8,false),M(col,{roughness:.5}))); }); }
       // 麻醉推車(照片):灰褐色抽屜櫃配湖水綠飾條、上層湖水綠托盤、U 型把手架與分格收納盒、側掛黃色針頭收集盒與藍蓋桶、左側收納籃
       // 推車放在麻醉機旁的角落,抽屜正面朝向麻醉護理師站位
       { const cg=new THREE.Group(); cg.position.set(-8.7,0,7.3); cg.rotation.y=Math.atan2(-1.7+8.7,4.4-7.3); g.add(cg);
