@@ -502,3 +502,17 @@ body.decoing .hint{display:none}
 .ans .qbooks{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)}
 .ans .qbook{font:inherit;font-size:13px;border:1.5px solid #EADFD0;background:#fff;border-radius:999px;padding:3px 10px;cursor:pointer;color:var(--ink)}
 .ans .qbook:hover{border-color:var(--accent);background:#FDEFF3}
+/* 技能:金幣夠了但還沒解鎖 */
+.sk.can{opacity:1;cursor:pointer;background:#FFF8E6;border-color:#F2C94C}.sk.can .tag{color:#B36B00;font-weight:700}
+/* 小攤販 */
+.shop .shopit{border:1.5px solid transparent;cursor:pointer;font:inherit;color:var(--ink)}
+.shop .shopit:hover{border-color:#E46F8E;background:#FFF0F4}
+.shop .shopit.poor{opacity:.5}
+.shop .shopit small{color:#8A5A10}
+/* 模擬手術室:花金幣請麻醉主治醫師 */
+#orPanel .bossbtn{display:block;width:100%;margin-top:10px;text-align:left;font:inherit;font-weight:700;border:1.5px solid #9FB8E6;background:#EEF4FF;color:#21406E;border-radius:12px;padding:8px 12px;cursor:pointer}
+#orPanel .bossbtn small{display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:2px}
+#orPanel .bossbtn.poor{opacity:.6}
+#orPanel .bossbtn:disabled{opacity:.5;cursor:default}
+/* 佈置面板分類標題 */
+#decobar .dcat{margin-top:6px;font-weight:700}
